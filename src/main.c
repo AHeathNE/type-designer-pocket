@@ -6,22 +6,29 @@
 #include "save.h"
 
 uint8_t current = 'A' - FIRST_CODE;
+uint8_t picker_slot;
+
+typedef void (*enter_fn)(void);
+typedef uint8_t (*update_fn)(void);
+static const enter_fn enters[] = {slots_enter, picker_enter, credits_enter, map_enter, editor_enter};
+static const update_fn updates[] = {slots_update, picker_update, credits_update, map_update, editor_update};
 
 void main(void) {
-    uint8_t editing = 0;
+    uint8_t screen = SCR_SLOTS, next;
 
     DISPLAY_OFF;
     gfx_init();
     save_init();
-    map_enter();
+    input_init();
+    slots_enter();
 
     while (1) {
         vsync();
         input_update();
-        if (!editing) {
-            if (map_update()) { editor_enter(); editing = 1; }
-        } else {
-            if (editor_update()) { map_enter(); editing = 0; }
+        next = updates[screen]();
+        if (next != SCR_STAY) {
+            screen = next;
+            enters[screen]();
         }
     }
 }

@@ -137,7 +137,8 @@ def main(argv=None):
         for n, s in enumerate(save.slots, 1):
             drawn = sum(s.has_ink(i) for i in range(tdpsave.GLYPHS))
             flags = ("" if s.crc_ok else "  CHECKSUM FAILED") + ("  (active)" if n - 1 == save.active else "")
-            print(f"slot {n}: {s.name:<12} {drawn:3d} glyphs drawn{flags}")
+            guide = tdpsave.TEMPLATES.get(s.template_id, f"template {s.template_id}")
+            print(f"slot {n}: {s.name:<12} {drawn:3d} glyphs drawn, guide: {guide}{flags}")
         return 0
 
     idx = (a.slot - 1) if a.slot else save.active

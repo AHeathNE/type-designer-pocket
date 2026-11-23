@@ -1,0 +1,154 @@
+"""Shared helpers: a Type Designer Pocket cartridge running headless in PyBoy, driven by buttons."""
+import sys
+from pathlib import Path
+
+from pyboy import PyBoy
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import font2c  # noqa: E402
+
+ROM = ROOT / "build" / "type-designer-pocket.gb"
+SHOTS = ROOT / "build" / "screens"
+FONTS = {name: font2c.parse(ROOT / "fonts" / f"{name}.txt") for name in ("pocket-sans", "pocket-serif", "classic-8x8")}
+SANS = FONTS["pocket-sans"]
+
+TILE_UI = 128          # UI text: code c at 128 + c - 32
+TILE_CANVAS = 224      # editor cells: state * 4 + corner (0 off, 1 guide, 2 ink)
+CELL_OFF, CELL_GUIDE, CELL_INK = 0, 4, 8   # TILE_CANVAS offsets of each state's top-left corner
+
+
+def bg_tile_addr(n):
+    """VRAM address of BG tile n in the 0x8800 addressing mode GBDK uses."""
+    return 0x9000 + n * 16 if n < 128 else 0x8800 + (n - 128) * 16
+
+
+def glyph_index(ch):
+    return ord(ch) - 32
+
+
+class Game:
+    """A powered-on cartridge. Boots to the fonts screen."""
+
+    def __init__(self, rom):
+        self.gb = PyBoy(str(rom), window="null", sound_emulated=False)
+        self.wait_fonts()
+
+    # ---- time and buttons ----
+
+    def tick(self, n=1):
+        self.gb.tick(n, True)
+
+    def wait_for(self, cond, what, limit=600):
+        for _ in range(limit):
+            self.tick()
+            if self.gb.memory[0xFF40] & 0x80 and cond():
+                self.tick(2)
+                return
+        raise AssertionError(f"timed out waiting for {what}; screen:\n" + "\n".join(self.screen()))
+
+    def press(self, button, hold=3, after=5):
+        self.gb.button_press(button)
+        self.tick(hold)
+        self.gb.button_release(button)
+        self.tick(after)
+
+    def hold(self, button):
+        self.gb.button_press(button)
+        self.tick(3)
+
+    def release(self, button):
+        self.gb.button_release(button)
+        self.tick(3)
+
+    def combo(self, held, button):
+        self.hold(held)
+        self.press(button)
+        self.release(held)
+
+    # ---- screens ----
+
+    def wait_fonts(self):
+        self.wait_for(lambda: self.text(13) == " A:OPEN", "the fonts screen")
+
+    def wait_map(self):
+        self.wait_for(lambda: self.text(17).startswith("A:EDIT"), "the character map")
+
+    def wait_editor(self):
+        self.wait_for(lambda: self.tile(19, 1) < 95 and self.text(0)[2:3] == "#", "the editor")
+
+    def wait_picker(self):
+        self.wait_for(lambda: self.text(0).startswith("NEW FONT IN SLOT"), "the new-font screen")
+
+    def open_slot(self, n=1):
+        """From the fonts screen, open slot n (1-3)."""
+        for _ in range(3):
+            self.press("up")
+        for _ in range(n - 1):
+            self.press("down")
+        self.press("a")
+        self.wait_map()
+
+    def open_editor(self):
+        self.press("a")
+        self.wait_editor()
+
+    def back_to_map(self):
+        """From the editor: START opens the menu, DONE is the last item."""
+        self.press("start")
+        self.press("up")      # wraps to DONE
+        self.press("a")
+        self.wait_map()
+
+    def menu(self, item):
+        """Run an editor menu item by its position (0 UNDO ... 8 DONE)."""
+        self.press("start")
+        for _ in range(item):
+            self.press("down")
+        self.press("a")
+
+    # ---- reading the screen ----
+
+    def tile(self, x, y):
+        return self.gb.memory[0x9800 + y * 32 + x]
+
+    def win_tile(self, x, y):
+        return self.gb.memory[0x9C00 + y * 32 + x]
+
+    def text(self, y):
+        return self.screen()[y]
+
+    def screen(self):
+        """Visible background as text: UI tiles as their characters, font tiles as a block."""
+        rows = []
+        for y in range(18):
+            row = ""
+            for x in range(20):
+                t = self.tile(x, y)
+                row += chr(t - TILE_UI + 32) if TILE_UI <= t < TILE_UI + 95 else ("█" if t < 95 else "░")
+            rows.append(row.rstrip())
+        return rows
+
+    def win_text(self, y, width=9):
+        return "".join(chr(t - TILE_UI + 32) if TILE_UI <= (t := self.win_tile(x, y)) < TILE_UI + 95 else "|"
+                       for x in range(width)).rstrip()
+
+    def bg_tile(self, n):
+        a = bg_tile_addr(n)
+        data = [self.gb.memory[a + i] for i in range(16)]
+        return data[0::2], data[1::2]   # (low plane, high plane) per row
+
+    def canvas_cell(self, x, y):
+        """Editor canvas state of pixel (x, y): CELL_OFF, CELL_GUIDE or CELL_INK."""
+        return self.tile(2 + 2 * x, 1 + 2 * y) - TILE_CANVAS
+
+    def shot(self, name):
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        self.gb.screen.image.save(SHOTS / f"{name}.png")
+
+    def power_off(self, save=True):
+        self.gb.stop(save=save)
+
+
+def rows_to_bytes(rows):
+    return [int("".join(map(str, r)), 2) for r in rows]

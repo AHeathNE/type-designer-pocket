@@ -1,11 +1,11 @@
 // Character map: every glyph in a 16-wide grid, the same order as GB Studio's font sheet.
 //
 //  row 0   TYPE DESIGNER POCKET
-//  row 1   slot name
+//  row 1   slot name, guide font
 //  rows 3-13 (odd)  glyph rows, columns 2-17
 //  row 15  selected: reference char, your glyph, code, width
 //  row 16  DRAWN n/95
-//  row 17  hints
+//  row 17  hints (A edit, B back to the fonts screen)
 #include <gb/gb.h>
 #include "app.h"
 #include "gfx.h"
@@ -46,14 +46,15 @@ void map_enter(void) {
     gfx_clear();
     text(0, 0, "TYPE DESIGNER POCKET");
     for (i = 0; i < 12 && font.name[i]; i++) set_bkg_tile_xy(i, 1, TILE_UI(font.name[i]));
+    text(14, 1, font.template_id < TEMPLATE_COUNT ? template_short[font.template_id] : "-");
     for (i = 0; i < EDIT_COUNT; i++) {
         glyph_tile(i, !glyph_has_ink(i));
         set_bkg_tile_xy(GRID_X + i % 16, GRID_Y + 2 * (i / 16), i);
     }
     draw_info();
     draw_count();
-    text(2, 17, "A:EDIT");
-    if (save_status == SAVE_DAMAGED) text(9, 17, "SAVE CHECK!");
+    text(0, 17, "A:EDIT B:FONTS");
+    if (save_status == SAVE_DAMAGED) text(0, 2, "SAVE CHECK!");
 
     set_sprite_tile(0, SPR_TILE_BAR);
     set_sprite_prop(0, 0);
@@ -75,5 +76,7 @@ uint8_t map_update(void) {
         place_bars();
         draw_info();
     }
-    return (pressed & J_A) != 0;
+    if (pressed & J_A) return SCR_EDITOR;
+    if (pressed & J_B) return SCR_SLOTS;
+    return SCR_STAY;
 }

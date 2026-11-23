@@ -3,6 +3,21 @@
 #include "gfx.h"
 #include "save.h"
 
+extern const uint8_t pocket_serif[95][8];
+extern const uint8_t classic_8x8[95][8];
+const glyph_t *const template_fonts[TEMPLATE_COUNT] = {pocket_sans, pocket_serif, classic_8x8};
+const char *const template_names[TEMPLATE_COUNT] = {"POCKET SANS", "POCKET SERIF", "CLASSIC 8X8"};
+const char *const template_short[TEMPLATE_COUNT] = {"SANS", "SERIF", "8X8"};
+
+const char *template_name(uint8_t id) {
+    return id < TEMPLATE_COUNT ? template_names[id] : "NO GUIDE";
+}
+
+uint8_t template_next(uint8_t id) {
+    if (id == TEMPLATE_NONE) return 0;
+    return (id + 1 < TEMPLATE_COUNT) ? id + 1 : TEMPLATE_NONE;
+}
+
 // put colour c (0-3) at (x, y) of a 2bpp tile
 static void tile_px(uint8_t *t, uint8_t x, uint8_t y, uint8_t c) {
     uint8_t bit = 0x80 >> x;
@@ -34,6 +49,15 @@ static void make_canvas_tiles(void) {
     memset(t, 0, sizeof t);
     for (y = 0; y < 8; y++) tile_px(t, 0, y, 1);
     set_bkg_data(TILE_EDGE, 1, t);
+    // menu frame: black lines along the left and top of the window
+    memset(t, 0, sizeof t);
+    for (y = 0; y < 8; y++) tile_px(t, 0, y, 3);
+    set_bkg_data(TILE_FRAME_V, 1, t);
+    memset(t, 0, sizeof t);
+    for (x = 0; x < 8; x++) tile_px(t, x, 0, 3);
+    set_bkg_data(TILE_FRAME_H, 1, t);
+    for (y = 0; y < 8; y++) tile_px(t, 0, y, 3);
+    set_bkg_data(TILE_FRAME_C, 1, t);
 }
 
 static void make_sprite_tiles(void) {
@@ -60,6 +84,7 @@ void gfx_init(void) {
 }
 
 void gfx_clear(void) {
+    HIDE_WIN;
     fill_bkg_rect(0, 0, 20, 18, TILE_BLANK);
     hide_sprites();
 }
@@ -77,6 +102,20 @@ void text(uint8_t x, uint8_t y, const char *s) {
     }
 }
 
+void text_pad(uint8_t x, uint8_t y, const char *s, uint8_t width) {
+    while (width && *s) {
+        set_bkg_tile_xy(x++, y, TILE_UI(*s >= 32 && *s <= 126 ? *s : '?'));
+        s++;
+        width--;
+    }
+    while (width--) set_bkg_tile_xy(x++, y, TILE_BLANK);
+}
+
+void win_text(uint8_t x, uint8_t y, const char *s) {
+    char c;
+    while ((c = *s++)) set_win_tile_xy(x++, y, TILE_UI(c >= 32 && c <= 126 ? c : '?'));
+}
+
 void text_num(uint8_t x, uint8_t y, uint8_t n) {
     char buf[4];
     uint8_t i = 0;
@@ -88,15 +127,24 @@ void text_num(uint8_t x, uint8_t y, uint8_t n) {
     text(x, y, buf);
 }
 
-void glyph_tile(uint8_t i, uint8_t guide) {
-    uint8_t t[16], r, ink, g;
+void tile_from(uint8_t tile, const uint8_t *ink, const uint8_t *guide) {
+    uint8_t t[16], r, k, g;
     for (r = 0; r < 8; r++) {
-        ink = font.glyphs[i][r];
-        g = (guide && i < 95) ? pocket_sans[i][r] : 0;
-        t[r * 2] = ink | g;   // ink -> colour 3, guide only -> colour 1
-        t[r * 2 + 1] = ink;
+        k = ink ? ink[r] : 0;
+        g = guide ? guide[r] : 0;
+        t[r * 2] = k | g;   // ink -> colour 3, guide only -> colour 1
+        t[r * 2 + 1] = k;
     }
-    set_bkg_data(i, 1, t);
+    set_bkg_data(tile, 1, t);
+}
+
+const uint8_t *guide_rows(uint8_t i) {
+    if (font.template_id >= TEMPLATE_COUNT || i >= 95) return 0;
+    return template_fonts[font.template_id][i];
+}
+
+void glyph_tile(uint8_t i, uint8_t guide) {
+    tile_from(i, font.glyphs[i], guide ? guide_rows(i) : 0);
 }
 
 uint8_t glyph_width(uint8_t i) {

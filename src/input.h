@@ -11,6 +11,7 @@ extern uint8_t pressed;   // went down this frame
 extern uint8_t released;  // went up this frame
 extern uint8_t moves;     // d-pad directions that fire this frame, with auto-repeat
 
-void input_update(void);
+void input_init(void);     // call once at boot
+void input_update(void);   // once per frame, after vsync()
 
 #endif

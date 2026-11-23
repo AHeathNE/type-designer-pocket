@@ -12,7 +12,7 @@ Layout, little-endian, starting at the beginning of the 8 KB save RAM (0xA000 on
 
   Slot i at 16 + i * 2064 (2060 bytes used, 4 spare)
     0     name          12 bytes, ASCII, space padded
-    12    template_id   0 = blank
+    12    template_id   guide font: 0 Pocket Sans, 1 Pocket Serif, 2 Classic 8x8, 0xFF none
     13    space_width   pixels GB Studio gives an undrawn glyph (default 4)
     14    used          28 bytes, bit (i & 7) of byte i >> 3 set when glyph i has ink
     42    widths        224 bytes, 0xFF = auto, else a fixed GB Studio width 1-8
@@ -34,6 +34,7 @@ GLYPHS = 224
 FIRST_CODE = 32
 SAVE_SIZE = 8192
 AUTO = 0xFF
+TEMPLATES = {0: "Pocket Sans", 1: "Pocket Serif", 2: "Classic 8x8", 0xFF: "no guide"}
 
 
 def crc16(data, crc=0xFFFF):
@@ -48,7 +49,7 @@ def crc16(data, crc=0xFFFF):
 @dataclass
 class Slot:
     name: str = "FONT"
-    template_id: int = 0
+    template_id: int = 0          # see TEMPLATES
     space_width: int = 4
     widths: list = field(default_factory=lambda: [AUTO] * GLYPHS)
     glyphs: list = field(default_factory=lambda: [bytes(8) for _ in range(GLYPHS)])

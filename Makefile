@@ -6,7 +6,8 @@
 GBDK   ?= vendor/gbdk
 LCC    := $(GBDK)/bin/lcc
 ROM    := build/type-designer-pocket.gb
-SRC    := $(wildcard src/*.c) build/gen/pocket_sans.c
+SRC    := $(wildcard src/*.c) build/gen/fonts.c
+FONTS  := fonts/pocket-sans.txt fonts/pocket-serif.txt fonts/classic-8x8.txt
 HDR    := $(wildcard src/*.h)
 PY     := .venv/bin/python
 
@@ -20,8 +21,8 @@ $(GBDK)/.version: tools/get-gbdk.sh
 	tools/get-gbdk.sh
 	@touch $@
 
-build/gen/pocket_sans.c: fonts/pocket-sans.txt tools/font2c.py
-	python3 tools/font2c.py $< pocket_sans $@
+build/gen/fonts.c: $(FONTS) tools/font2c.py
+	python3 tools/font2c.py $@ pocket_sans=fonts/pocket-sans.txt pocket_serif=fonts/pocket-serif.txt classic_8x8=fonts/classic-8x8.txt
 
 $(ROM): $(SRC) $(HDR) $(GBDK)/.version
 	@mkdir -p build
