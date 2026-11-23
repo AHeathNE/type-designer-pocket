@@ -4,8 +4,8 @@
 //  row 1   slot name, guide font
 //  rows 3-13 (odd)  glyph rows, columns 2-17
 //  row 15  selected: reference char, your glyph, code, width
-//  row 16  DRAWN n/95
-//  row 17  hints (A edit, B back to the fonts screen)
+//  row 16  DRAWN n/95, B hint
+//  row 17  hints (A edit, START type test)
 #include <gb/gb.h>
 #include "app.h"
 #include "gfx.h"
@@ -53,7 +53,8 @@ void map_enter(void) {
     }
     draw_info();
     draw_count();
-    text(0, 17, "A:EDIT B:FONTS");
+    text(0, 17, "A:EDIT  START:TEST");
+    text(13, 16, "B:FONTS");
     if (save_status == SAVE_DAMAGED) text(0, 2, "SAVE CHECK!");
 
     set_sprite_tile(0, SPR_TILE_BAR);
@@ -78,5 +79,6 @@ uint8_t map_update(void) {
     }
     if (pressed & J_A) return SCR_EDITOR;
     if (pressed & J_B) return SCR_SLOTS;
+    if (pressed & J_START) return SCR_TYPETEST;
     return SCR_STAY;
 }

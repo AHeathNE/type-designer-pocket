@@ -11,8 +11,8 @@ FONTS  := fonts/pocket-sans.txt fonts/pocket-serif.txt fonts/classic-8x8.txt
 HDR    := $(wildcard src/*.h)
 PY     := .venv/bin/python
 
-# Cartridge: MBC5 + RAM + battery (0x1B), one 8 KB save RAM bank, header title.
-LCCFLAGS := -Wl-yt0x1B -Wl-ya1 -Wm-yn"TDPOCKET"
+# Cartridge: MBC5 + RAM + battery (0x1B), one 8 KB save RAM bank, header title; symbol file for tests.
+LCCFLAGS := -Wl-yt0x1B -Wl-ya1 -Wm-yn"TDPOCKET" -Wl-j   # -Wl-j: symbol file (.noi) for the tests
 
 all: $(ROM)
 

@@ -26,6 +26,7 @@
 // Sprite tiles (0x8000, separate from the BG tiles above)
 #define SPR_TILE_CORNER 0
 #define SPR_TILE_BAR 1
+#define SPR_TILE_MARK 2   // dashed vertical line: the width markers in the editor
 
 // Starter templates, in template_id order (the id stored in each save slot)
 #define TEMPLATE_COUNT 3
@@ -47,6 +48,16 @@ void tile_from(uint8_t tile, const uint8_t *ink, const uint8_t *guide);  // eith
 void glyph_tile(uint8_t i, uint8_t guide);        // BG tile i from the font + its template guide
 const uint8_t *guide_rows(uint8_t i);             // template rows for glyph i, or 0
 uint8_t glyph_width(uint8_t i);                   // the width GB Studio will use (same rule as the exporter)
-void hide_sprites(void);
+uint8_t glyph_ink_left(uint8_t i);                // first column with ink (1 if blank)
+void hide_sprites(void);                          // all 40
+
+// Text in the font being made, exactly as GB Studio will set it (same rules as tools/sav2font.py):
+// variable width, ink moved to start at column 1, letters drawn in one case used for both.
+#define TEXT_LINE_PX 144                          // 18 tiles
+uint8_t text_glyph(uint8_t c, const uint8_t **rows, uint8_t *lo, uint8_t *left);  // returns advance width
+uint8_t text_layout(const char *s, uint8_t len, uint8_t max_lines, uint8_t *starts, uint8_t *lens);
+void text_line_tiles(const char *s, uint8_t len, uint8_t tile0);   // render one line into 18 BG tiles
+void text_block(const char *s, uint8_t len, uint8_t x, uint8_t y, uint8_t lines, uint8_t tile0);
+                                                  // wrap and draw on every other row from (x, y)
 
 #endif

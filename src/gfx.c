@@ -71,6 +71,10 @@ static void make_sprite_tiles(void) {
     memset(t, 0, sizeof t);
     for (i = 0; i < 8; i++) { tile_px(t, i, 6, 3); tile_px(t, i, 7, 3); }
     set_sprite_data(SPR_TILE_BAR, 1, t);
+    // width marker: a 2 px dash down the left edge (one sprite every 16 px makes a dashed line)
+    memset(t, 0, sizeof t);
+    for (i = 0; i < 8; i++) { tile_px(t, 0, i, 3); tile_px(t, 1, i, 3); }
+    set_sprite_data(SPR_TILE_MARK, 1, t);
 }
 
 void gfx_init(void) {
@@ -91,7 +95,7 @@ void gfx_clear(void) {
 
 void hide_sprites(void) {
     uint8_t i;
-    for (i = 0; i < 8; i++) move_sprite(i, 0, 0);
+    for (i = 0; i < 40; i++) move_sprite(i, 0, 0);
 }
 
 void text(uint8_t x, uint8_t y, const char *s) {
@@ -157,4 +161,105 @@ uint8_t glyph_width(uint8_t i) {
     w = hi - lo + 1;                       // ink width
     w = (w >= 8) ? 8 : w + 2;              // one blank column each side, capped at 8
     return w > 8 ? 8 : w;
+}
+
+uint8_t glyph_ink_left(uint8_t i) {
+    uint8_t cols = 0, r, lo;
+    for (r = 0; r < 8; r++) cols |= font.glyphs[i][r];
+    if (!cols) return 1;
+    for (lo = 0; !(cols & (0x80 >> lo)); lo++) {}
+    return lo;
+}
+
+// ---- text set in the font being made ----
+
+static uint8_t line_buf[TEXT_LINE_PX];   // 18 tiles x 8 rows, 1bpp
+
+uint8_t text_glyph(uint8_t c, const uint8_t **rows, uint8_t *lo, uint8_t *left) {
+    uint8_t i, j, cols = 0, r, hi, w;
+    *rows = 0;
+    if (c < 32 || c > 126) return font.space_width;
+    i = j = c - 32;
+    if (!glyph_has_ink(i)) {
+        if (c >= 'A' && c <= 'Z') j = i + 32;
+        else if (c >= 'a' && c <= 'z') j = i - 32;
+        if (!glyph_has_ink(j)) j = i;
+    }
+    for (r = 0; r < 8; r++) cols |= font.glyphs[j][r];
+    if (!cols) return font.widths[i] != WIDTH_AUTO ? font.widths[i] : font.space_width;
+    for (*lo = 0; !(cols & (0x80 >> *lo)); (*lo)++) {}
+    for (hi = 7; !(cols & (0x80 >> hi)); hi--) {}
+    w = hi - *lo + 1;
+    *left = (w >= 8) ? 0 : 1;
+    *rows = font.glyphs[j];
+    if (font.widths[j] != WIDTH_AUTO) return font.widths[j];
+    w += *left + 1;
+    return w > 8 ? 8 : w;
+}
+
+static uint8_t advance(uint8_t c) {
+    const uint8_t *rows;
+    uint8_t lo, left;
+    return text_glyph(c, &rows, &lo, &left);
+}
+
+// Greedy word wrap: break at the last space that fits; a word longer than a line breaks where it must.
+uint8_t text_layout(const char *s, uint8_t len, uint8_t max_lines, uint8_t *starts, uint8_t *lens) {
+    uint8_t i = 0, n = 0, start, j, w, brk;
+    uint16_t x;
+    while (i < len && n < max_lines) {
+        while (i < len && s[i] == ' ') i++;          // no spaces at the start of a line
+        if (i >= len) break;
+        start = i;
+        x = 0;
+        brk = 0xFF;
+        for (j = i; j < len; j++) {
+            w = advance(s[j]);
+            if (x + w > TEXT_LINE_PX) break;
+            if (s[j] == ' ') brk = j;
+            x += w;
+        }
+        if (j < len && brk != 0xFF && brk > start) {
+            lens[n] = brk - start;
+            i = brk + 1;
+        } else {
+            lens[n] = j - start;
+            i = j;
+        }
+        starts[n++] = start;
+    }
+    return n;
+}
+
+void text_line_tiles(const char *s, uint8_t len, uint8_t tile0) {
+    const uint8_t *rows;
+    uint8_t k, r, w, lo, left, b, t, sh;
+    uint16_t x = 0, px;
+    memset(line_buf, 0, sizeof line_buf);
+    for (k = 0; k < len && x < TEXT_LINE_PX; k++) {
+        w = text_glyph(s[k], &rows, &lo, &left);
+        if (rows) {
+            px = x + left;
+            t = px >> 3;
+            sh = px & 7;
+            if (px < TEXT_LINE_PX) {
+                for (r = 0; r < 8; r++) {
+                    b = rows[r] << lo;
+                    line_buf[t * 8 + r] |= b >> sh;
+                    if (sh && t < 17) line_buf[(t + 1) * 8 + r] |= b << (8 - sh);
+                }
+            }
+        }
+        x += w;
+    }
+    set_bkg_1bpp_data(tile0, TEXT_LINE_PX / 8, line_buf);
+}
+
+void text_block(const char *s, uint8_t len, uint8_t x, uint8_t y, uint8_t lines, uint8_t tile0) {
+    uint8_t starts[8], lens[8], n, k, c;
+    n = text_layout(s, len, lines, starts, lens);
+    for (k = 0; k < lines; k++) {
+        text_line_tiles(k < n ? s + starts[k] : s, k < n ? lens[k] : 0, tile0 + k * 18);
+        for (c = 0; c < 18; c++) set_bkg_tile_xy(x + c, y + 2 * k, tile0 + k * 18 + c);
+    }
 }

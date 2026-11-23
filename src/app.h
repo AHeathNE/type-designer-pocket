@@ -9,6 +9,8 @@
 #define SCR_CREDITS 2
 #define SCR_MAP 3
 #define SCR_EDITOR 4
+#define SCR_TYPETEST 5
+#define SCR_KEYBOARD 6
 #define SCR_STAY 0xFF
 
 extern uint8_t current;       // glyph index being viewed or edited (code - 32)
@@ -19,5 +21,7 @@ void picker_enter(void);  uint8_t picker_update(void);
 void credits_enter(void); uint8_t credits_update(void);
 void map_enter(void);     uint8_t map_update(void);
 void editor_enter(void);  uint8_t editor_update(void);
+void typetest_enter(void); uint8_t typetest_update(void);
+void keyboard_enter(void); uint8_t keyboard_update(void);
 
 #endif

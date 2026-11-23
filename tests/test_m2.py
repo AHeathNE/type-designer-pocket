@@ -171,7 +171,7 @@ class M2(unittest.TestCase):
         game.press("start")
         game.shot("m2-menu")
         self.assertEqual(game.win_text(1), "|>UNDO")
-        self.assertEqual(game.win_text(8), "| G:SANS")
+        self.assertEqual(game.win_text(9), "| G:SANS")
         self.assertEqual(game.win_text(11), "|B:CLOSE")
         game.press("b")                         # close without doing anything
 
@@ -189,7 +189,7 @@ class M2(unittest.TestCase):
         self.assertEqual(self.glyph(game), [0, 0, 0, 0, 0, 0x04, 0, 0])
         game.menu(0)                            # UNDO the nudge (one step for the whole nudge)
         self.assertEqual(self.glyph(game), [0, 0, 0, 0, 0, 0, 0x02, 0])
-        game.menu(6)                            # CLEAR
+        game.menu(7)                            # CLEAR
         self.assertEqual(self.glyph(game), [0] * 8)
         game.menu(2)                            # PASTE the copied (1,1)
         self.assertEqual(self.glyph(game), [0, 0x40, 0, 0, 0, 0, 0, 0])
@@ -232,20 +232,20 @@ class M2(unittest.TestCase):
         game.open_editor()
         self.assertEqual(game.canvas_cell(1, 2), CELL_GUIDE)   # sans 'A' row 2: .#...#..
         game.press("start")
-        for _ in range(7):
+        for _ in range(8):
             game.press("down")
         game.press("a")                                       # G:SANS -> G:SERIF, menu stays open
-        self.assertEqual(game.win_text(8), "|>G:SERIF")
+        self.assertEqual(game.win_text(9), "|>G:SERIF")
         game.press("a")
-        self.assertEqual(game.win_text(8), "|>G:8X8")
+        self.assertEqual(game.win_text(9), "|>G:8X8")
         game.press("a")
-        self.assertEqual(game.win_text(8), "|>G:OFF")
+        self.assertEqual(game.win_text(9), "|>G:OFF")
         game.press("b")
         self.assertEqual(game.canvas_cell(1, 2), CELL_OFF)
-        game.menu(7)                                          # back to SANS
+        game.menu(8)                                          # back to SANS
         game.press("b")
         self.assertEqual(game.canvas_cell(1, 2), CELL_GUIDE)
-        game.menu(7)                                          # SERIF, and keep it
+        game.menu(8)                                          # SERIF, and keep it
         game.press("b")
         game.back_to_map()
         self.assertEqual(game.text(1), "FONT 1        SERIF")

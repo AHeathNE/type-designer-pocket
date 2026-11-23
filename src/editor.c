@@ -7,7 +7,10 @@
 //  D-pad move (hold to repeat)     A paint (toggles; hold A and move to keep painting)
 //  B erase (hold and move)         SELECT + Left/Right previous/next glyph
 //  SELECT tap  guide on/off        SELECT + B undo
-//  START       menu: undo, copy, paste, flip, nudge, clear, guide font, done
+//  START       menu: undo, copy, paste, flip, nudge, width, clear, guide font, done
+//
+//  Width mode (from the menu): Left/Right set a fixed GB Studio width, B goes back to automatic, A done.
+//  Two dashed lines show where the glyph starts and where the next one begins once it's set in text.
 #include <gb/gb.h>
 #include <string.h>
 #include "app.h"
@@ -24,9 +27,10 @@
 
 #define MENU_X 11     // window position, in tiles
 #define MENU_Y 6
-enum { M_UNDO, M_COPY, M_PASTE, M_FLIPH, M_FLIPV, M_NUDGE, M_CLEAR, M_GUIDE, M_DONE, MENU_COUNT };
+enum { M_UNDO, M_COPY, M_PASTE, M_FLIPH, M_FLIPV, M_NUDGE, M_WIDTH, M_CLEAR, M_GUIDE, M_DONE, MENU_COUNT };
 static const char *const menu_labels[MENU_COUNT] = {
-    "UNDO", "COPY", "PASTE", "FLIP H", "FLIP V", "NUDGE", "CLEAR", 0, "DONE"};
+    "UNDO", "COPY", "PASTE", "FLIP H", "FLIP V", "NUDGE", "WIDTH", "CLEAR", 0, "DONE"};
+#define MARK_SPRITE 4   // sprites 4-11 start line, 12-19 advance line
 
 static uint8_t cx = 1, cy = 1;   // cursor, in glyph pixels
 static uint8_t paint;            // value A paints while held
@@ -34,7 +38,7 @@ static uint8_t guide = 1;        // show the template under the canvas
 static uint8_t select_combo;     // SELECT was used with another button, so its release isn't a tap
 static uint8_t dirty;
 static uint8_t stroke_pending;   // A/B went down: take an undo snapshot before the first change
-static uint8_t menu_open, menu_sel, nudging, msg_timer;
+static uint8_t menu_open, menu_sel, nudging, widthing, msg_timer;
 
 static uint8_t undo_buf[UNDO_MAX][8];
 static uint8_t undo_top, undo_count;
@@ -64,6 +68,7 @@ static void draw_canvas(void) {
 static void draw_width(void) {
     text(7, 0, "W");
     text_num(8, 0, glyph_width(current));
+    if (font.widths[current] != WIDTH_AUTO) set_bkg_tile_xy(9, 0, TILE_UI('*'));
 }
 
 static void draw_header(void) {
@@ -184,6 +189,61 @@ static void nudge(uint8_t dir) {
     if (dir & J_DOWN) { for (r = 7; r > 0; r--) g[r] = g[r - 1]; g[0] = 0; }
 }
 
+// ---- width mode ----
+
+// A dashed vertical line at the boundary before glyph column `col` (may be -1 .. 9).
+static void place_mark(uint8_t first_sprite, int8_t col) {
+    uint8_t k, x = (uint8_t)(CANVAS_X * 8 + col * 16 - 1 + 8);   // OAM x = screen x + 8
+    for (k = 0; k < 8; k++) {
+        set_sprite_tile(first_sprite + k, SPR_TILE_MARK);
+        set_sprite_prop(first_sprite + k, 0);
+        move_sprite(first_sprite + k, x, (CANVAS_Y * 8) + k * 16 + 16 + 4);
+    }
+}
+
+// Where GB Studio will put this glyph: its ink moves to start at column 1 (0 if 8 wide), and the next
+// glyph starts `width` columns after the left edge of the cell.
+static void place_width_marks(void) {
+    uint8_t lo = glyph_ink_left(current), w = glyph_width(current), inkw = 0, cols = 0, r, hi;
+    int8_t start;
+    for (r = 0; r < 8; r++) cols |= font.glyphs[current][r];
+    if (cols) {
+        for (hi = 7; !(cols & (0x80 >> hi)); hi--) {}
+        inkw = hi - lo + 1;
+    }
+    start = (int8_t)lo - (cols && inkw >= 8 ? 0 : 1);
+    place_mark(MARK_SPRITE, start);
+    place_mark(MARK_SPRITE + 8, start + w);
+}
+
+static void width_hint(void) {
+    text_pad(0, 17, "<>:WIDTH B:AUTO A:OK", 20);
+}
+
+static void width_update(void) {
+    uint8_t w = glyph_width(current);
+    if (moves & (J_LEFT | J_RIGHT)) {
+        if ((moves & J_LEFT) && w > 1) w--;
+        if ((moves & J_RIGHT) && w < 8) w++;
+        font.widths[current] = w;
+        dirty = 1;
+    }
+    if (pressed & J_B) {
+        font.widths[current] = WIDTH_AUTO;
+        dirty = 1;
+    }
+    if (moves & (J_LEFT | J_RIGHT) || pressed & J_B) {
+        draw_width();
+        place_width_marks();
+    }
+    if (pressed & (J_A | J_START)) {
+        widthing = 0;
+        hide_sprites();
+        show_hints();
+        place_cursor();
+    }
+}
+
 // ---- menu (in the window layer, over the right side of the canvas) ----
 
 static void menu_draw(void) {
@@ -273,6 +333,13 @@ static uint8_t menu_update(void) {
         hide_sprites();
         text_pad(0, 17, "NUDGE: D-PAD  A:OK", 20);
         return SCR_STAY;
+    case M_WIDTH:
+        widthing = 1;
+        menu_close();
+        hide_sprites();
+        place_width_marks();
+        width_hint();
+        return SCR_STAY;
     case M_CLEAR:
         snapshot();
         memset(font.glyphs[current], 0, 8);
@@ -319,6 +386,7 @@ void editor_enter(void) {
     stroke_pending = 0;
     menu_open = 0;
     nudging = 0;
+    widthing = 0;
     undo_count = 0;
     SHOW_BKG;
     SHOW_SPRITES;
@@ -331,6 +399,10 @@ uint8_t editor_update(void) {
     if (msg_timer && --msg_timer == 0) show_hints();
 
     if (menu_open) return menu_update();
+    if (widthing) {
+        width_update();
+        return SCR_STAY;
+    }
 
     if (nudging) {
         if (moves & J_DPAD) {

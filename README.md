@@ -6,7 +6,9 @@ Working title. Sister project to the web [Type Making Game](https://github.com/A
 
 ## Status
 
-**M2: templates, three fonts, editor tools.** You can keep three fonts on the cartridge and start each one from a starter template. The template can be a light-grey guide to trace over, or a copy to remix. The editor has undo, copy/paste, flips, nudge and clear.
+**M3: type test and widths.** The type test sets sample text, or your own, in your font exactly as GB Studio will, with variable width and word wrap. Each glyph can have a fixed width, and the space's width sets the word spacing.
+
+Earlier milestones: three fonts on the cartridge, each started from a template (a guide to trace over, or a copy to remix), and an editor with undo, copy/paste, flips, nudge and clear.
 
 ## Playing
 
@@ -31,7 +33,22 @@ Working title. Sister project to the web [Type Making Game](https://github.com/A
 | --- | --- |
 | D-pad | Pick a character |
 | A | Edit it |
+| START | Type test |
 | B | Back to the fonts screen |
+
+**Type test.** Sets text in your font exactly as GB Studio will. It uses the same rules as the exporter:
+- variable width
+- ink moved to start at column 1
+- letters drawn in one case used for both
+- word wrap at 144 px
+
+Left/Right cycles through five samples: a pangram, an all-caps pangram, digits and punctuation, a shop-dialogue line, and **your own text**. The screen lists any characters the sample needs that you haven't drawn yet.
+
+| Control | Does |
+| --- | --- |
+| Left/Right | Change sample |
+| A | Write your own text on the keyboard screen (up to 40 characters): A adds, B deletes, SELECT adds a space, START shows it |
+| B | Back to the map |
 
 **Editor.**
 
@@ -54,6 +71,7 @@ The START menu has:
 | PASTE | Paste onto any character |
 | FLIP H, FLIP V | Mirror the glyph across or up and down |
 | NUDGE | Move the whole glyph with the d-pad; A when done |
+| WIDTH | Set a fixed GB Studio width with Left/Right; B goes back to automatic. Dashed lines show where the glyph starts and where the next one begins. On the space, this sets the word spacing. A fixed width shows as `W5*` |
 | CLEAR | Empty the glyph |
 | G: | Cycle the guide font for this font |
 | DONE | Save and go back to the map |
@@ -108,7 +126,8 @@ make test
 ```
 
 This creates `.venv`, installs [PyBoy](https://github.com/Baekalfen/PyBoy), and runs `tests/` headless. The tests:
-- drive the game with button presses (draw, erase, switch glyphs, toggle the guide, create fonts from templates, use every editor menu item)
+- drive the game with button presses (draw, erase, switch glyphs, toggle the guide, create fonts from templates, use every editor menu item, type on the keyboard)
+- compare the type test's pixels, line by line, with the same text laid out by the exporter's code
 - power-cycle the cartridge
 - check the save the game writes against `tools/tdpsave.py`
 - export it to a GB Studio sheet
@@ -145,9 +164,10 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | `src/main.c` | Main loop and screen switching |
 | `src/slots.c`, `src/picker.c`, `src/credits.c` | Fonts screen, new-font screen, credits |
 | `src/map.c`, `src/editor.c` | Character map, editor and its menu |
+| `src/typetest.c` | Type test and keyboard |
 | `src/save.c` | Battery save: format, slots, checksums, write |
-| `src/gfx.c` | Tiles, text, templates, glyph rendering, width rule |
-| `src/input.c` | Joypad read in VBlank (taps are never lost), with d-pad auto-repeat |
+| `src/gfx.c` | Tiles, text, templates, glyph rendering, width rule, variable-width text and word wrap |
+| `src/input.c` | Joypad read in VBlank: every press is counted and handed out one per frame, so taps are never lost or merged |
 | `fonts/*.txt` | Starter templates as editable text art; Pocket Sans is also the UI font |
 | `tools/font2c.py` | Turns the text fonts into C at build time |
 | `tools/import_font8x8.py` | Rebuilds `fonts/classic-8x8.txt` from font8x8's header |
@@ -163,7 +183,7 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | **M0** ✓ | Toolchain, hello ROM, test harness |
 | **M1** ✓ | Character map and editor for the 95 ASCII glyphs, one save slot with a checksum, `.sav` to GB Studio font |
 | **M2** ✓ | Templates shown as a ghost under your pixels, three slots, copy/paste/flip/nudge/undo, credits |
-| **M3** | Type test screen with variable width |
+| **M3** ✓ | Type test screen with variable width, per-glyph and space widths |
 | **M4** | Web import page (GB Studio zip and `.otf`), then playing in the browser |
 | **M5** | Challenge mode, characters 128–255 |
 | **M6** | Sound, title art, Game Boy Color palettes, real hardware |

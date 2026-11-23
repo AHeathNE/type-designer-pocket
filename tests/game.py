@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import font2c  # noqa: E402
 
 ROM = ROOT / "build" / "type-designer-pocket.gb"
+NOI = ROOT / "build" / "type-designer-pocket.noi"   # symbols, from the -Wl-j link flag
 SHOTS = ROOT / "build" / "screens"
 FONTS = {name: font2c.parse(ROOT / "fonts" / f"{name}.txt") for name in ("pocket-sans", "pocket-serif", "classic-8x8")}
 SANS = FONTS["pocket-sans"]
@@ -21,6 +22,21 @@ CELL_OFF, CELL_GUIDE, CELL_INK = 0, 4, 8   # TILE_CANVAS offsets of each state's
 def bg_tile_addr(n):
     """VRAM address of BG tile n in the 0x8800 addressing mode GBDK uses."""
     return 0x9000 + n * 16 if n < 128 else 0x8800 + (n - 128) * 16
+
+
+def _symbols():
+    syms = {}
+    for line in NOI.read_text().splitlines():
+        parts = line.split()
+        if len(parts) == 3 and parts[0] == "DEF":
+            syms[parts[1]] = int(parts[2], 16)
+    return syms
+
+
+SYMBOLS = _symbols()
+# GBDK's vsync() is where the game waits when it has nothing to do: from _vsync to the next symbol
+_VSYNC = SYMBOLS["_vsync"]
+_VSYNC_END = min(a for a in SYMBOLS.values() if a > _VSYNC)
 
 
 def glyph_index(ch):
@@ -46,6 +62,20 @@ class Game:
                 self.tick(2)
                 return
         raise AssertionError(f"timed out waiting for {what}; screen:\n" + "\n".join(self.screen()))
+
+    def idle(self):
+        """True when the CPU is waiting in vsync(): the game has finished this frame's work."""
+        return _VSYNC <= self.gb.register_file.PC < _VSYNC_END
+
+    def settle(self, quiet=3, limit=900):
+        """Wait until the game has caught up with every button press: idle for `quiet` frames in a row."""
+        still = 0
+        for _ in range(limit):
+            self.tick()
+            still = still + 1 if self.idle() else 0
+            if still >= quiet:
+                return
+        raise AssertionError("the game never went idle")
 
     def press(self, button, hold=3, after=5):
         self.gb.button_press(button)
@@ -77,6 +107,17 @@ class Game:
     def wait_editor(self):
         self.wait_for(lambda: self.tile(19, 1) < 95 and self.text(0)[2:3] == "#", "the editor")
 
+    def wait_typetest(self):
+        self.wait_for(lambda: self.text(0).startswith("TYPE TEST"), "the type test")
+
+    def wait_keyboard(self):
+        self.wait_for(lambda: self.text(0) == "A:ADD B:DEL ST:DONE", "the keyboard")
+
+    def oam(self, sprite):
+        """(OAM x, OAM y) of a sprite."""
+        a = 0xFE00 + sprite * 4
+        return self.gb.memory[a + 1], self.gb.memory[a]
+
     def wait_picker(self):
         self.wait_for(lambda: self.text(0).startswith("NEW FONT IN SLOT"), "the new-font screen")
 
@@ -101,7 +142,8 @@ class Game:
         self.wait_map()
 
     def menu(self, item):
-        """Run an editor menu item by its position (0 UNDO ... 8 DONE)."""
+        """Run an editor menu item by its position:
+        0 UNDO, 1 COPY, 2 PASTE, 3 FLIP H, 4 FLIP V, 5 NUDGE, 6 WIDTH, 7 CLEAR, 8 G:, 9 DONE."""
         self.press("start")
         for _ in range(item):
             self.press("down")
