@@ -123,4 +123,6 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 
 ## Licences
 
-GBDK-2020's runtime library is GPLv2 with a linking exception, so ROMs built with it can use any licence. Pocket Sans was drawn for this project; see [`fonts/LICENSES.md`](fonts/LICENSES.md).
+- **Code:** [MIT](LICENSE).
+- **Fonts:** Pocket Sans is under the [SIL Open Font License 1.1](fonts/OFL.txt). See [`fonts/LICENSES.md`](fonts/LICENSES.md).
+- **Toolchain:** GBDK-2020's runtime library is GPLv2 with a linking exception, so ROMs built with it can use any licence.

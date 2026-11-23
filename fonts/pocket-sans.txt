@@ -1,5 +1,5 @@
 # Pocket Sans: the reference font for Type Designer Pocket.
-# Drawn for this project. The game uses it for its own text and as the light-grey guide under each glyph.
+# Drawn for this project; SIL Open Font License 1.1 (fonts/OFL.txt). The game uses it for its own text and as the light-grey guide under each glyph.
 #
 # Metrics match GB Studio's built-in fonts:
 #   row 0      accents / dots
