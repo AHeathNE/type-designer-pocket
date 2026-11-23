@@ -3,15 +3,16 @@
 # Usage: tools/get-gbdk.sh
 set -euo pipefail
 
-VERSION="4.6.0"
+# 4.6.0 (SDCC 4.6.2) drops an `add hl, hl` when indexing a pointer by y * 2 (see README), so stay on 4.5.0.
+VERSION="4.5.0"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/vendor/gbdk"
 
 case "$(uname -s)-$(uname -m)" in
-  Linux-x86_64)  ASSET="gbdk-linux64.tar.gz";      SHA="c033dac026b99c080f07c2a659eb25976f65ca114cb15d1570bbb23c99c27e35" ;;
-  Linux-aarch64) ASSET="gbdk-linux-arm64.tar.gz";  SHA="003bdb93b4a46702ec04cb9758be5032431deab024dff5637171183a7cea6f5b" ;;
-  Darwin-arm64)  ASSET="gbdk-macos-arm64.tar.gz";  SHA="36bf2b005d5a87c7c343e0ddafb42f53578bf22e52a78f17c4aa74b80e71bc8a" ;;
-  Darwin-x86_64) ASSET="gbdk-macos.tar.gz";        SHA="490748e5f100ae2421aef38196ac93c76c2af86efc81edf817bc4d0af725ad44" ;;
+  Linux-x86_64)  ASSET="gbdk-linux64.tar.gz";      SHA="d7857a5f6d135ee4c249043ca26aad9f2ec8ab5d4106d97720d404114f42605c" ;;
+  Linux-aarch64) ASSET="gbdk-linux-arm64.tar.gz";  SHA="31eb2235f0fdb60163d0b1e9574a022098d6069cd56606a1daca4478a46e0439" ;;
+  Darwin-arm64)  ASSET="gbdk-macos-arm64.tar.gz";  SHA="289ee60e46c5a2785a21e35533f84a5131ed4a063b21b0dbdedc9a10af15bf78" ;;
+  Darwin-x86_64) ASSET="gbdk-macos.tar.gz";        SHA="1aa549d12032d8f6509d11923bb28b1a453098f42597feb378e9a42541f8fd89" ;;
   *) echo "No pinned GBDK build for $(uname -s)-$(uname -m). Get one from https://github.com/gbdk-2020/gbdk-2020/releases" >&2; exit 1 ;;
 esac
 
