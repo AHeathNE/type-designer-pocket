@@ -1,0 +1,7 @@
+build/
+vendor/
+.venv/
+__pycache__/
+*.sav
+*.ram
+*.rtc
