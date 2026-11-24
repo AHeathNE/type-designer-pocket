@@ -14,6 +14,35 @@ export const AUTO = 0xff;
 export const LINE_PX = 144; // GB Studio's 18-tile text width, also the game's type test
 export const TEMPLATES = { 0: "Pocket Sans", 1: "Pocket Serif", 2: "Classic 8×8", 255: "no guide" };
 
+// The character set. Codes 32-126 are ASCII and 160-255 are Latin-1, so GB Studio needs no mapping for them.
+// 128-159 hold symbols, which GB Studio reaches through the font's "mapping". 127 isn't used.
+export const EXTRA = "←→↑↓▲▼◀▶♥♦♣♠★♪●○‘’“”•…–—€™Œœ✓✗■□";
+export const UNUSED = 127;
+
+/** The Unicode character a code stands for, or null for 127. */
+export function charOf(code) {
+  if (code === UNUSED) return null;
+  return code >= 128 && code < 160 ? EXTRA[code - 128] : String.fromCharCode(code);
+}
+
+/** The code for a character typed on the web page, or -1 if it isn't in the set. */
+export function codeOf(ch) {
+  const k = EXTRA.indexOf(ch);
+  if (k >= 0) return 128 + k;
+  const c = ch.charCodeAt(0);
+  return (c >= 32 && c < 127) || (c >= 160 && c <= 255) ? c : -1;
+}
+
+/** GB Studio font JSON "mapping" for the symbols: {"←": 128, ...}. */
+export const gbsMapping = () => Object.fromEntries([...EXTRA].map((ch, k) => [ch, 128 + k]));
+
+/** The same letter in the other case, if it has one in this set (ASCII and Latin-1), else -1. */
+export function otherCase(c) {
+  if ((c >= 65 && c <= 90) || (c >= 192 && c <= 222 && c !== 215)) return c + 32;
+  if ((c >= 97 && c <= 122) || (c >= 224 && c <= 254 && c !== 247)) return c - 32;
+  return -1;
+}
+
 // CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, no reflection, no final xor
 const CRC_TABLE = (() => {
   const t = new Uint16Array(256);
@@ -77,18 +106,18 @@ export function rows(slot, i) {
   return Array.from(slot.glyphs[i], (b) => Array.from({ length: 8 }, (_, x) => (b >> (7 - x)) & 1));
 }
 
-export const drawnCount = (slot) => slot.glyphs.slice(0, 95).filter((g) => g.some((b) => b)).length;
+const countInk = (slot, from, to) => slot.glyphs.slice(from, to).filter((g) => g.some((b) => b)).length;
+export const drawnCount = (slot) => countInk(slot, 0, 95);             // codes 32-126
+export const drawnExtCount = (slot) => countInk(slot, 96, GLYPHS);    // codes 128-255
 
-/** Glyph rows for a character code: its own drawing, else the other case of the same letter. */
+/** Glyph rows for a character code: its own drawing, else the other case of the same letter
+ * (A-Z and the Latin-1 letters: é falls back to É and the other way round). */
 export function tileFor(slot, code) {
   const i = code - FIRST_CODE;
   if (i < 0 || i >= GLYPHS) return { rows: null, override: AUTO };
   if (hasInk(slot, i)) return { rows: rows(slot, i), override: slot.widths[i] };
-  const ch = String.fromCharCode(code);
-  if (/^[A-Za-z]$/.test(ch)) {
-    const other = (ch === ch.toUpperCase() ? ch.toLowerCase() : ch.toUpperCase()).charCodeAt(0) - FIRST_CODE;
-    if (hasInk(slot, other)) return { rows: rows(slot, other), override: slot.widths[other] };
-  }
+  const other = otherCase(code) - FIRST_CODE;
+  if (other >= 0 && hasInk(slot, other)) return { rows: rows(slot, other), override: slot.widths[other] };
   return { rows: null, override: slot.widths[i] };
 }
 
@@ -112,8 +141,11 @@ export function exportTile(glyphRows, override = AUTO, spaceWidth = 4) {
   return { ink: out, width };
 }
 
+/** A character as GB Studio sets it. Characters outside the set get the space width, like undrawn ones. */
 export function glyphFor(slot, ch) {
-  const { rows: r, override } = tileFor(slot, ch.charCodeAt(0));
+  const code = codeOf(ch);
+  if (code < 0) return { ...exportTile(null, AUTO, slot.spaceWidth), drawn: false };
+  const { rows: r, override } = tileFor(slot, code);
   return { ...exportTile(r, override, slot.spaceWidth), drawn: !!r };
 }
 

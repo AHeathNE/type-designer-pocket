@@ -141,6 +141,13 @@ class Game:
         self.press("a")
         self.wait_map()
 
+    def map_menu(self, item):
+        """From the character map, START's menu: 0 TYPE TEST, 1 CHALLENGE, 2 FONTS."""
+        self.press("start")
+        for _ in range(item):
+            self.press("down")
+        self.press("a")
+
     def menu(self, item):
         """Run an editor menu item by its position:
         0 UNDO, 1 COPY, 2 PASTE, 3 FLIP H, 4 FLIP V, 5 NUDGE, 6 WIDTH, 7 CLEAR, 8 G:, 9 DONE."""

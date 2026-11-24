@@ -1,7 +1,7 @@
 // Pixel font -> OpenType (.otf), built with opentype.js (window.opentype, vendored).
 // Every glyph uses the same placement and width as the GB Studio export, so text set with the .otf
 // matches the game's type test. One pixel is 125 units: 8 px = 1000 units per em.
-import { FIRST_CODE, GLYPHS, tileFor, exportTile } from "./save.js";
+import { FIRST_CODE, GLYPHS, tileFor, exportTile, charOf } from "./save.js";
 
 const PX = 125;
 const BASELINE_ROW = 7; // the baseline sits under row 6: rows 0-6 above it, row 7 descends
@@ -76,12 +76,16 @@ function glyphPath(ink) {
 export function buildOtf(slot, name) {
   const glyphs = [new opentype.Glyph({ name: ".notdef", unicode: 0, advanceWidth: 4 * PX, path: new opentype.Path() })];
   for (let code = FIRST_CODE; code < FIRST_CODE + GLYPHS; code++) {
+    const ch = charOf(code);
+    if (!ch) continue; // 127
     const { rows, override } = tileFor(slot, code);
-    if (!rows && code !== 32) continue; // undrawn: leave it out so apps fall back instead of showing a gap
+    // undrawn: leave it out so apps fall back instead of showing a gap (the two spaces stay, blank)
+    if (!rows && code !== 32 && code !== 160) continue;
     const { ink, width } = exportTile(rows, override, slot.spaceWidth);
+    const uni = ch.codePointAt(0); // ASCII and Latin-1 as they are; 128-159 are the symbols (see save.js)
     glyphs.push(new opentype.Glyph({
-      name: code === 32 ? "space" : `uni${code.toString(16).toUpperCase().padStart(4, "0")}`,
-      unicode: code, // 32-126 are ASCII; 128-255 map to Latin-1, as GB Studio's default does
+      name: code === 32 ? "space" : `uni${uni.toString(16).toUpperCase().padStart(4, "0")}`,
+      unicode: uni,
       advanceWidth: width * PX,
       path: glyphPath(ink),
     }));

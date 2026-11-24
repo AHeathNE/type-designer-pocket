@@ -29,15 +29,15 @@ SHEET_W, SHEET_H = 128, 112
 
 
 def tile_for(slot, code):
-    """Glyph rows for a character code: its own drawing, else the other case of the same letter."""
+    """Glyph rows for a character code: its own drawing, else the other case of the same letter
+    (A-Z and the Latin-1 letters: é falls back to É and the other way round)."""
     i = code - tdpsave.FIRST_CODE
     if slot.has_ink(i):
         return slot.rows(i), slot.widths[i]
-    ch = chr(code)
-    if ch.isascii() and ch.isalpha():
-        other = ord(ch.lower() if ch.isupper() else ch.upper()) - tdpsave.FIRST_CODE
-        if slot.has_ink(other):
-            return slot.rows(other), slot.widths[other]
+    other = tdpsave.other_case(code)
+    if other is not None and slot.has_ink(other - tdpsave.FIRST_CODE):
+        o = other - tdpsave.FIRST_CODE
+        return slot.rows(o), slot.widths[o]
     return None, slot.widths[i]
 
 
@@ -85,6 +85,10 @@ def how_to(name, s):
         "It's a variable-width font: the magenta columns in the PNG mark where each",
         "character ends. Letters you only drew in one case are used for both cases.",
         "",
+        "Accented letters and the other Latin-1 characters (é ñ ü £ © ½...) work as you",
+        "type them. So do the symbols (← ↑ ♥ ★ ♪ “ ” … € ™...): the .json",
+        "maps them to the font's characters 128-159.",
+        "",
         "Docs: https://www.gbstudio.dev/docs/settings/#ui-elements--fonts",
         "",
     ])
@@ -97,7 +101,8 @@ def export(save, slot_index, name, out_dir, make_zip=False):
     s = slug(name)
     files = {
         f"{s}.png": png_bytes(sheet_pixels(slot)),
-        f"{s}.json": (json.dumps({"name": name, "mapping": {}}, indent=2) + "\n").encode(),
+        f"{s}.json": (json.dumps({"name": name, "mapping": tdpsave.gbs_mapping()}, indent=2, ensure_ascii=False)
+                      + "\n").encode(),
         "HOW-TO-USE.txt": how_to(name, s).encode(),
     }
     out_dir = Path(out_dir)

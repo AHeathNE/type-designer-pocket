@@ -13,6 +13,10 @@ HDR    := $(wildcard src/*.h)
 PY     := .venv/bin/python
 
 # Cartridge: MBC5 + RAM + battery (0x1B), one 8 KB save RAM bank, header title; symbol file for tests.
+# ROM is 32 KB. The game never switches ROM banks, so bank 1 stays mapped at 0x4000 and files marked
+# `#pragma bank 1` (the fonts, challenge, type test) are called and read like bank 0. Past 32 KB, real
+# banking (BANKED calls, SWITCH_ROM for data) will be needed. `vendor/gbdk/bin/romusage build/*.noi -a`
+# shows how full each bank is.
 LCCFLAGS := -Wl-yt0x1B -Wl-ya1 -Wm-yn"TDPOCKET" -Wl-j   # -Wl-j: symbol file (.noi) for the tests
 
 all: $(ROM)

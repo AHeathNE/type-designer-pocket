@@ -97,13 +97,13 @@ class M2(unittest.TestCase):
         game.press("a")
         game.wait_map()
         self.assertEqual(game.text(1), "FONT 2        SERIF")
-        self.assertEqual(game.text(16), "DRAWN 94/95  B:FONTS")   # every glyph but the space, clear of the hint
+        self.assertEqual(game.text(16), "DRAWN 94/95 SEL:PAGE")   # every glyph but the space, clear of the hint
         game.power_off()
         save = self.saved()
         slot = save.slots[1]
         self.assertEqual(save.active, 1)
         self.assertEqual(slot.template_id, 1)
-        self.assertEqual([list(slot.glyphs[i]) for i in range(95)], SERIF)
+        self.assertEqual([list(g) for g in slot.glyphs], SERIF)   # all 224, accents and symbols too
         self.assertTrue(slot.crc_ok)
 
     def test_new_font_guide_only_and_no_guide(self):

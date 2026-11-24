@@ -163,20 +163,21 @@ void save_slot_info(uint8_t slot, SlotInfo *out) {
     out->name[12] = 0;
     for (i = 12; i && out->name[i - 1] == ' '; i--) out->name[i - 1] = 0;
     out->template_id = buf[12];
-    out->drawn = 0;
-    for (i = 0; i < EDIT_COUNT; i++)   // used bitmap starts at byte 14; count the first 95 bits
-        if (buf[14 + (i >> 3)] & (1 << (i & 7))) out->drawn++;
+    out->drawn = out->drawn_ext = 0;
+    for (i = 0; i < GLYPH_COUNT; i++)   // used bitmap starts at byte 14
+        if (buf[14 + (i >> 3)] & (1 << (i & 7))) {
+            if (i < BASIC_COUNT) out->drawn++;
+            else out->drawn_ext++;
+        }
     out->ok = slot_ok[slot];
 }
 
 void save_reset(uint8_t template_id, const glyph_t *copy_from) {
     char name[12];
-    uint8_t i;
     memcpy(name, font.name, 12);
     blank_font(header.active);
     memcpy(font.name, name, 12);
     font.template_id = template_id;
-    if (copy_from)
-        for (i = 0; i < EDIT_COUNT; i++) memcpy(font.glyphs[i], copy_from[i], 8);
+    if (copy_from) memcpy(font.glyphs, copy_from, sizeof font.glyphs);
     save_write();
 }

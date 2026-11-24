@@ -1,5 +1,5 @@
 import { Pocket } from "./emulator.js";
-import { parseSave, NotASave, drawnCount, glyphFor, layout, TEMPLATES, LINE_PX, SAVE_SIZE } from "./save.js";
+import { parseSave, NotASave, drawnCount, drawnExtCount, glyphFor, layout, TEMPLATES, LINE_PX, SAVE_SIZE, GLYPHS, UNUSED, FIRST_CODE } from "./save.js";
 import { gbStudioZip, slug } from "./gbstudio.js";
 import { buildOtf } from "./otf.js";
 
@@ -194,8 +194,10 @@ function renderSlots(save, message = "") {
     const st = (cardState[i] ||= { name: "", text: SAMPLE });
     const fallbackName = slot.name.replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase());
     $(".slot-title", card).textContent = slot.name || `Font ${i + 1}`;
+    const ext = drawnExtCount(slot);
     $(".slot-meta", card).textContent =
-      `${drawnCount(slot)}/95 drawn · guide: ${TEMPLATES[slot.templateId] ?? "?"}${i === save.active ? " · last opened" : ""}`;
+      `${drawnCount(slot)}/95 drawn${ext ? ` + ${ext} symbols and accents` : ""} · guide: ` +
+      `${TEMPLATES[slot.templateId] ?? "?"}${i === save.active ? " · last opened" : ""}`;
     $(".slot-bad", card).hidden = slot.crcOk;
     $(".name", card).placeholder = fallbackName;
     $(".name", card).value = st.name;
@@ -225,16 +227,17 @@ function bindCard(card, i) {
 
 const colour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-// glyph grid: the 95 characters in the game's map order, ink only
+// glyph grid: all 224 cells in GB Studio's sheet order (codes 32-255, 16 to a row), ink only
 function drawGrid(canvas, slot) {
   const S = 3, ctx = canvas.getContext("2d");
   canvas.width = 16 * 10 * S;
-  canvas.height = 6 * 10 * S;
+  canvas.height = (GLYPHS / 16) * 10 * S;
   ctx.fillStyle = colour("--paper");
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   const ink = colour("--ink");
   const empty = colour("--faint");
-  for (let i = 0; i < 95; i++) {
+  for (let i = 0; i < GLYPHS; i++) {
+    if (i === UNUSED - FIRST_CODE) continue;
     const ox = ((i % 16) * 10 + 1) * S, oy = (Math.floor(i / 16) * 10 + 1) * S;
     const g = slot.glyphs[i];
     if (!g.some((b) => b)) {

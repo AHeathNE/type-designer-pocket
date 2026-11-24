@@ -36,6 +36,39 @@ SAVE_SIZE = 8192
 AUTO = 0xFF
 TEMPLATES = {0: "Pocket Sans", 1: "Pocket Serif", 2: "Classic 8x8", 0xFF: "no guide"}
 
+# The character set. Codes 32-126 are ASCII and 160-255 are Latin-1, so GB Studio needs no mapping for
+# them (it writes any character below 256 as its own code). 128-159 hold symbols, which GB Studio reaches
+# through the font's "mapping". 127 (DEL) isn't used: the game skips it and the sheet leaves it blank.
+EXTRA = "←→↑↓▲▼◀▶♥♦♣♠★♪●○‘’“”•…–—€™Œœ✓✗■□"
+UNUSED = 127
+
+
+def char_of(code):
+    """The Unicode character a code stands for, or None for 127."""
+    if code == UNUSED:
+        return None
+    if 128 <= code < 160:
+        return EXTRA[code - 128]
+    return chr(code)
+
+
+def editable(code):
+    return FIRST_CODE <= code <= 255 and code != UNUSED
+
+
+def gbs_mapping():
+    """GB Studio font JSON "mapping" for the symbols: {"←": 128, ...}."""
+    return {ch: 128 + i for i, ch in enumerate(EXTRA)}
+
+
+def other_case(code):
+    """The same letter in the other case, if it has one in this set (ASCII and Latin-1), else None."""
+    if 65 <= code <= 90 or 192 <= code <= 222 and code != 215:
+        return code + 32
+    if 97 <= code <= 122 or 224 <= code <= 254 and code != 247:
+        return code - 32
+    return None
+
 
 def crc16(data, crc=0xFFFF):
     """CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, no reflection, no final xor."""

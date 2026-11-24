@@ -3,7 +3,7 @@
 //  row 0        NEW FONT IN SLOT n
 //  rows 2-3     > GUIDE  < POCKET SANS >
 //                 START  < EMPTY | COPY IT >
-//  rows 5-15    preview of all 95 glyphs (light grey = guide only, black = copied ink)
+//  rows 5-15    preview of codes 32-126 (light grey = guide only, black = copied ink); all 224 are copied
 //  row 17       hints, or the overwrite confirmation
 #include <gb/gb.h>
 #include "app.h"
@@ -26,7 +26,7 @@ static void draw_choices(void) {
 static void draw_preview(void) {
     uint8_t i;
     const uint8_t *g;
-    for (i = 0; i < EDIT_COUNT; i++) {
+    for (i = 0; i < BASIC_COUNT; i++) {
         g = tmpl < TEMPLATE_COUNT ? template_fonts[tmpl][i] : 0;
         if (copy) tile_from(i, g, 0);
         else tile_from(i, 0, g);
@@ -52,7 +52,7 @@ void picker_enter(void) {
     set_bkg_tile_xy(17, 0, TILE_UI('1' + picker_slot));
     text(2, 2, "GUIDE");
     text(2, 3, "START");
-    for (i = 0; i < EDIT_COUNT; i++) set_bkg_tile_xy(GRID_X + i % 16, GRID_Y + 2 * (i / 16), i);
+    for (i = 0; i < BASIC_COUNT; i++) set_bkg_tile_xy(GRID_X + i % 16, GRID_Y + 2 * (i / 16), i);
     draw_choices();
     draw_preview();
     draw_hints();

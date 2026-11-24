@@ -1,6 +1,6 @@
 // GB Studio font export: NAME.png + NAME.json + HOW-TO-USE.txt, as loose files or one zip.
 // Matches tools/sav2font.py pixel for pixel.
-import { FIRST_CODE, GLYPHS, tileFor, exportTile } from "./save.js";
+import { FIRST_CODE, GLYPHS, tileFor, exportTile, gbsMapping } from "./save.js";
 
 // GB Studio's font loader reads the green channel for shades and treats pure white and magenta as
 // transparent, so the background must be GB light green, not white.
@@ -50,6 +50,10 @@ export function howTo(name, s) {
     "It's a variable-width font: the magenta columns in the PNG mark where each",
     "character ends. Letters you only drew in one case are used for both cases.",
     "",
+    "Accented letters and the other Latin-1 characters (é ñ ü £ © ½...) work as you",
+    "type them. So do the symbols (← ↑ ♥ ★ ♪ “ ” … € ™...): the .json",
+    "maps them to the font's characters 128-159.",
+    "",
     "Docs: https://www.gbstudio.dev/docs/settings/#ui-elements--fonts",
     "",
   ].join("\r\n");
@@ -60,7 +64,7 @@ export async function gbStudioZip(slot, name) {
   const enc = new TextEncoder();
   return makeZip([
     { name: `${s}.png`, data: await sheetPng(slot) },
-    { name: `${s}.json`, data: enc.encode(JSON.stringify({ name, mapping: {} }, null, 2) + "\n") },
+    { name: `${s}.json`, data: enc.encode(JSON.stringify({ name, mapping: gbsMapping() }, null, 2) + "\n") },
     { name: "HOW-TO-USE.txt", data: enc.encode(howTo(name, s)) },
   ]);
 }

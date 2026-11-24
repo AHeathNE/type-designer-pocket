@@ -38,13 +38,18 @@ class Web(unittest.TestCase):
         data = bytearray(tdpsave.build([serif, classic, blank], active=1))
         data[16 + 2 * 2064 + 5] ^= 1                     # damage slot 3
 
-        texts = c_samples() + ["Hi! A7 7A", "x" * 60 + " y"]
+        serif.glyphs[0xE9 - 32] = bytes(8)                  # é missing: falls back to É
+        texts = c_samples() + ["Hi! A7 7A", "x" * 60 + " y", "\xe9t\xe9 \x88\x8c \xd7"]   # in codes
+        uni = lambda t: "".join(tdpsave.char_of(ord(c)) for c in t)   # noqa: E731  (what a visitor types)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "t.sav"
             path.write_bytes(bytes(data))
-            out = subprocess.run([NODE, str(ROOT / "tests" / "web_check.mjs"), str(path), *texts],
-                                 capture_output=True, text=True, check=True, cwd=ROOT)
+            out = subprocess.run([NODE, str(ROOT / "tests" / "web_check.mjs"), str(path), *map(uni, texts)],
+                                 capture_output=True, text=True, check=True, cwd=ROOT, encoding="utf-8")
         js = json.loads(out.stdout)
+        self.assertEqual(js["chars"], [tdpsave.char_of(c) for c in range(32, 256)])
+        self.assertEqual(js["mapping"], tdpsave.gbs_mapping())
+        self.assertEqual(js["howTo"], sav2font.how_to("My Font", "my-font"))
 
         py = tdpsave.parse(bytes(data))
         self.assertEqual(js["active"], py.active)
@@ -60,7 +65,15 @@ class Web(unittest.TestCase):
                 self.assertEqual(jslot["tiles"][k], {"ink": ink, "width": width}, f"{pslot.name} code {code}")
                 self.assertEqual(jslot["areas"][k], sum(map(sum, ink)), f"{pslot.name} code {code}: outline area")
             for t, lines in zip(texts, jslot["layouts"]):
-                self.assertEqual(lines, layout(pslot, t, 99), f"{pslot.name}: {t!r}")
+                self.assertEqual(lines, [uni(line) for line in layout(pslot, t, 99)], f"{pslot.name}: {t!r}")
+            # .otf: every glyph GB Studio would draw is there, at its Unicode code point, with GB Studio's width
+            want = {}
+            for code in range(32, 256):
+                rows, override = sav2font.tile_for(pslot, code)
+                if code != 127 and (rows or code in (32, 160)):
+                    want[str(ord(tdpsave.char_of(code)))] = tdpsave.export_tile(rows or [[0] * 8] * 8, override,
+                                                                                pslot.space_width)[1]
+            self.assertEqual(jslot["cmap"], want, pslot.name)
         self.assertFalse(js["slots"][2]["crcOk"])
 
 

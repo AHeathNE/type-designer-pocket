@@ -16,7 +16,8 @@ void credits_enter(void) {
     text(1, 9, "font8x8 by Daniel");
     text(1, 10, "Hepper, from IBM");
     text(1, 11, "VGA. Public domain");
-    text(0, 13, "MADE WITH GBDK-2020");
+    text(1, 12, "(symbols: OFL 1.1)");
+    text(0, 14, "MADE WITH GBDK-2020");
     text(0, 17, "B:BACK");
     SHOW_BKG;
     DISPLAY_ON;

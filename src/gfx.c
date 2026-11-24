@@ -3,8 +3,8 @@
 #include "gfx.h"
 #include "save.h"
 
-extern const uint8_t pocket_serif[95][8];
-extern const uint8_t classic_8x8[95][8];
+extern const uint8_t pocket_serif[GLYPH_COUNT][8];
+extern const uint8_t classic_8x8[GLYPH_COUNT][8];
 const glyph_t *const template_fonts[TEMPLATE_COUNT] = {pocket_sans, pocket_serif, classic_8x8};
 const char *const template_names[TEMPLATE_COUNT] = {"POCKET SANS", "POCKET SERIF", "CLASSIC 8X8"};
 const char *const template_short[TEMPLATE_COUNT] = {"SANS", "SERIF", "8X8"};
@@ -16,6 +16,28 @@ const char *template_name(uint8_t id) {
 uint8_t template_next(uint8_t id) {
     if (id == TEMPLATE_NONE) return 0;
     return (id + 1 < TEMPLATE_COUNT) ? id + 1 : TEMPLATE_NONE;
+}
+
+const uint8_t page_first[PAGE_COUNT] = {0, 128 - FIRST_CODE, 192 - FIRST_CODE};
+const uint8_t page_cells[PAGE_COUNT] = {BASIC_COUNT, 64, 64};
+const char *const page_titles[PAGE_COUNT] = {"BASIC 32-126", "SYMBOLS 128-191", "ACCENTS 192-255"};
+
+uint8_t page_of(uint8_t i) {
+    return i < page_first[1] ? 0 : (i < page_first[2] ? 1 : 2);
+}
+
+uint8_t glyph_step(uint8_t i, int8_t dir) {
+    do {
+        if (dir < 0) i = i ? i - 1 : GLYPH_COUNT - 1;
+        else i = (i + 1 < GLYPH_COUNT) ? i + 1 : 0;
+    } while (i == UNUSED_GLYPH);
+    return i;
+}
+
+uint8_t other_case(uint8_t c) {
+    if ((c >= 'A' && c <= 'Z') || (c >= 192 && c <= 222 && c != 215)) return c + 32;
+    if ((c >= 'a' && c <= 'z') || (c >= 224 && c <= 254 && c != 247)) return c - 32;
+    return 0;
 }
 
 // put colour c (0-3) at (x, y) of a 2bpp tile
@@ -58,6 +80,15 @@ static void make_canvas_tiles(void) {
     set_bkg_data(TILE_FRAME_H, 1, t);
     for (y = 0; y < 8; y++) tile_px(t, 0, y, 3);
     set_bkg_data(TILE_FRAME_C, 1, t);
+    // timer bar: the first s columns solid black, the rest a light-grey track
+    for (s = 0; s <= 8; s++) {
+        memset(t, 0, sizeof t);
+        for (x = 0; x < 8; x++)
+            for (y = 1; y < 7; y++)
+                if (x < s) tile_px(t, x, y, 3);
+                else if (y == 3 || y == 4) tile_px(t, x, y, 1);
+        set_bkg_data(TILE_BAR + s, 1, t);
+    }
 }
 
 static void make_sprite_tiles(void) {
@@ -81,7 +112,7 @@ void gfx_init(void) {
     BGP_REG = 0xE4;                 // 0 white, 1 light, 2 dark, 3 black
     OBP0_REG = 0xE0;                // sprites: 1 white, 2 dark, 3 black
     set_1bpp_colors(3, 0);
-    set_bkg_1bpp_data(TILE_UI(32), 95, (const uint8_t *)pocket_sans);
+    set_bkg_1bpp_data(TILE_UI(32), BASIC_COUNT, (const uint8_t *)pocket_sans);
     make_canvas_tiles();
     make_sprite_tiles();
     SPRITES_8x8;
@@ -131,6 +162,20 @@ void text_num(uint8_t x, uint8_t y, uint8_t n) {
     text(x, y, buf);
 }
 
+char *num_cat(char *p, uint8_t n) {
+    if (n >= 100) *p++ = '0' + n / 100;
+    if (n >= 10) *p++ = '0' + (n / 10) % 10;
+    *p++ = '0' + n % 10;
+    return p;
+}
+
+void text_frac(uint8_t x, uint8_t y, uint8_t a, uint8_t b, uint8_t width) {
+    char buf[8], *p = num_cat(buf, a);
+    *p++ = '/';
+    *num_cat(p, b) = 0;
+    text_pad(x, y, buf, width);
+}
+
 void tile_from(uint8_t tile, const uint8_t *ink, const uint8_t *guide) {
     uint8_t t[16], r, k, g;
     for (r = 0; r < 8; r++) {
@@ -143,12 +188,32 @@ void tile_from(uint8_t tile, const uint8_t *ink, const uint8_t *guide) {
 }
 
 const uint8_t *guide_rows(uint8_t i) {
-    if (font.template_id >= TEMPLATE_COUNT || i >= 95) return 0;
+    if (font.template_id >= TEMPLATE_COUNT) return 0;
     return template_fonts[font.template_id][i];
 }
 
-void glyph_tile(uint8_t i, uint8_t guide) {
-    tile_from(i, font.glyphs[i], guide ? guide_rows(i) : 0);
+void glyph_tile(uint8_t tile, uint8_t i, uint8_t guide) {
+    tile_from(tile, font.glyphs[i], guide ? guide_rows(i) : 0);
+}
+
+uint8_t ref_tile(uint8_t i, uint8_t spare) {
+    if (i < BASIC_COUNT) return TILE_UI(FIRST_CODE + i);
+    set_bkg_1bpp_data(spare, 1, pocket_sans[i]);
+    return spare;
+}
+
+void bars_show(void) {
+    set_sprite_tile(0, SPR_TILE_BAR);
+    set_sprite_prop(0, 0);
+    set_sprite_tile(1, SPR_TILE_BAR);
+    set_sprite_prop(1, S_FLIPY);
+}
+
+void bars_place(uint8_t x0, uint8_t y0, uint8_t k) {
+    uint8_t x = (x0 + k % 16) * 8 + 8;          // OAM x = screen x + 8
+    uint8_t y = (y0 + 2 * (k / 16)) * 8 + 16;   // OAM y = screen y + 16
+    move_sprite(0, x, y - 8);
+    move_sprite(1, x, y + 8);
 }
 
 uint8_t glyph_width(uint8_t i) {
@@ -178,11 +243,10 @@ static uint8_t line_buf[TEXT_LINE_PX];   // 18 tiles x 8 rows, 1bpp
 uint8_t text_glyph(uint8_t c, const uint8_t **rows, uint8_t *lo, uint8_t *left) {
     uint8_t i, j, cols = 0, r, hi, w;
     *rows = 0;
-    if (c < 32 || c > 126) return font.space_width;
+    if (c < 32 || c == 127) return font.space_width;
     i = j = c - 32;
-    if (!glyph_has_ink(i)) {
-        if (c >= 'A' && c <= 'Z') j = i + 32;
-        else if (c >= 'a' && c <= 'z') j = i - 32;
+    if (!glyph_has_ink(i) && (r = other_case(c))) {
+        j = r - 32;
         if (!glyph_has_ink(j)) j = i;
     }
     for (r = 0; r < 8; r++) cols |= font.glyphs[j][r];
@@ -214,7 +278,7 @@ uint8_t text_layout(const char *s, uint8_t len, uint8_t max_lines, uint8_t *star
         x = 0;
         brk = 0xFF;
         for (j = i; j < len; j++) {
-            w = advance(s[j]);
+            w = advance((uint8_t)s[j]);
             if (x + w > TEXT_LINE_PX) break;
             if (s[j] == ' ') brk = j;
             x += w;
@@ -237,7 +301,7 @@ void text_line_tiles(const char *s, uint8_t len, uint8_t tile0) {
     uint16_t x = 0, px;
     memset(line_buf, 0, sizeof line_buf);
     for (k = 0; k < len && x < TEXT_LINE_PX; k++) {
-        w = text_glyph(s[k], &rows, &lo, &left);
+        w = text_glyph((uint8_t)s[k], &rows, &lo, &left);
         if (rows) {
             px = x + left;
             t = px >> 3;

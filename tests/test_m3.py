@@ -17,11 +17,20 @@ SERIF = FONTS["pocket-serif"]
 
 
 def c_samples():
-    """The built-in samples, read from src/typetest.c so the test can't drift from the game."""
+    """The built-in samples, read from src/typetest.c so the test can't drift from the game.
+
+    Each sample is one or more adjacent C string literals; escapes like \\xE9 give the character with that
+    code (Latin-1, or one of the symbols at 128-159).
+    """
     src = (ROOT / "src" / "typetest.c").read_text()
     block = src[src.index("samples[SAMPLE_COUNT - 1] = {"):]
     block = block[: block.index("};")]
-    return [bytes(lit, "utf-8").decode("unicode_escape") for lit in re.findall(r'"((?:[^"\\]|\\.)*)"', block)]
+    block = re.sub(r"//[^\n]*", "", block)
+    out = []
+    for item in re.findall(r'((?:"(?:[^"\\]|\\.)*"\s*)+),', block):
+        lits = re.findall(r'"((?:[^"\\]|\\.)*)"', item)
+        out.append("".join(bytes(lit, "latin-1").decode("unicode_escape") for lit in lits))
+    return out
 
 
 # ---- reference: GB Studio's view of the font, built only from the exporter's code ----
@@ -120,7 +129,7 @@ class M3(unittest.TestCase):
 
     def open_type_test(self, game):
         game.open_slot(1)
-        game.press("start")
+        game.map_menu(0)                        # TYPE TEST
         game.wait_typetest()
         game.settle()
 
@@ -132,29 +141,33 @@ class M3(unittest.TestCase):
         game = Game(self.rom)
         self.open_type_test(game)
         samples = c_samples()
-        self.assertEqual(len(samples), 4)
+        self.assertEqual(len(samples), 6)
+        self.assertTrue(any(ord(c) > 191 for c in samples[4]), "sample 5 has accented letters")
+        self.assertTrue(all(32 <= ord(c) < 160 for c in samples[5]) and any(ord(c) >= 128 for c in samples[5]))
         for n, text in enumerate(samples):
-            self.assertEqual(game.text(0), f"TYPE TEST      <{n + 1}/5>")
+            self.assertEqual(game.text(0), f"TYPE TEST      <{n + 1}/7>")
             lines = self.assert_matches_exporter(game, slot, text)
             self.assertGreater(len(lines), 0)
-            missing = sorted({c for c in text if c != " " and advance(slot, c)[0] == [[0] * 8] * 8
+            missing = sorted({c for c in text if c not in " \xa0" and advance(slot, c)[0] == [[0] * 8] * 8
                               and sav2font.tile_for(slot, ord(c))[0] is None}, key=text.index)
             if missing:
                 self.assertEqual(game.text(14)[:11].rstrip(), f"MISSING {len(missing)}".ljust(11).rstrip())
-                self.assertEqual(game.text(14)[12:], "".join(missing[:8]))
+                for k, c in enumerate(missing[:8]):   # each shown in Pocket Sans
+                    t = game.tile(12 + k, 14)
+                    self.assertEqual(game.bg_tile(t)[0], SANS[ord(c) - 32], f"missing {c!r}")
             else:
                 self.assertEqual(game.text(14), "ALL GLYPHS DRAWN")
             game.shot(f"m3-typetest-{n + 1}")
             game.press("right")
             game.settle()
-        self.assertEqual(game.text(2), " (A: WRITE YOUR OWN)")   # sample 5 is yours, still empty
+        self.assertEqual(game.text(2), " (A: WRITE YOUR OWN)")   # sample 7 is yours, still empty
         game.press("right")
         game.settle()
-        self.assertEqual(game.text(0), "TYPE TEST      <1/5>")
+        self.assertEqual(game.text(0), "TYPE TEST      <1/7>")
         game.press("left")
         game.press("left")
         game.settle()
-        self.assertEqual(game.text(0), "TYPE TEST      <4/5>")
+        self.assertEqual(game.text(0), "TYPE TEST      <6/7>")
         game.press("b")
         game.wait_map()
         game.power_off(save=False)
@@ -205,7 +218,7 @@ class M3(unittest.TestCase):
         game.press("start")
         game.wait_typetest()
         game.settle()
-        self.assertEqual(game.text(0), "TYPE TEST      <5/5>")
+        self.assertEqual(game.text(0), "TYPE TEST      <7/7>")
         self.assert_matches_exporter(game, slot, "Pixel Fonts!")
         game.power_off(save=False)
 

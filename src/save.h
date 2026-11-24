@@ -8,7 +8,8 @@ typedef uint8_t glyph_t[8];
 
 #define GLYPH_COUNT 224   // codes 32-255, GB Studio's full range
 #define FIRST_CODE 32
-#define EDIT_COUNT 95     // codes 32-126 are editable in M1
+#define BASIC_COUNT 95    // codes 32-126
+#define UNUSED_GLYPH 95   // code 127 (DEL): not drawn, skipped everywhere
 #define SLOT_COUNT 3
 #define WIDTH_AUTO 0xFF
 
@@ -38,7 +39,8 @@ typedef struct {
 typedef struct {
     char name[13];        // NUL-terminated
     uint8_t template_id;
-    uint8_t drawn;        // glyphs with ink among the editable 95
+    uint8_t drawn;        // glyphs with ink among codes 32-126
+    uint8_t drawn_ext;    // ... and among codes 128-255
     uint8_t ok;           // checksum passed
 } SlotInfo;
 
@@ -51,7 +53,7 @@ uint8_t save_active(void);
 void save_select(uint8_t slot);              // make a slot active and load it into `font`
 void save_slot_info(uint8_t slot, SlotInfo *out);
 void save_reset(uint8_t template_id, const glyph_t *copy_from);  // blank the active slot, keep its name;
-                                                                 // copy_from: a template's 95 glyphs, or 0
+                                                                 // copy_from: a template's 224 glyphs, or 0
 uint8_t glyph_has_ink(uint8_t i);
 uint16_t crc16(const uint8_t *p, uint16_t n);
 

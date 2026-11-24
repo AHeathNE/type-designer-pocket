@@ -6,6 +6,8 @@ Working title.
 
 ## Status
 
+**M5: challenge mode and the full character set.** A timed challenge, like the web Type Making Game: pick the seconds per glyph and which characters, then draw each one before its timer runs out. Fonts now cover all of GB Studio's codes 32–255: ASCII, symbols (arrows, card suits, hearts, stars, curly quotes and more) and Latin-1 accents, and all three templates come with them.
+
 **M4: the website.** Play in the browser, and export your fonts as a GB Studio zip or an `.otf`, straight from the running game or from any `.sav`.
 
 **M3: type test and widths.** The type test sets sample text, or your own, in your font exactly as GB Studio will, with variable width and word wrap. Each glyph can have a fixed width, and the space's width sets the word spacing.
@@ -27,15 +29,22 @@ Earlier milestones: three fonts on the cartridge, each started from a template (
 - Pick how to **start**:
   - **EMPTY** shows the guide in light grey to trace over.
   - **COPY IT** fills the font with the template, ready to remix.
-- The preview below shows all 95 characters. If the slot already has drawings, the game asks before erasing them.
+- The preview below shows the 95 ASCII characters. **COPY IT** copies all 223, symbols and accents too. If the slot already has drawings, the game asks before erasing them.
 
-**Character map.** Every character in a 16-wide grid, in the same order as a GB Studio font sheet. Characters you haven't drawn show the guide in light grey.
+**Character map.** The character set in a 16-wide grid, in the same order as a GB Studio font sheet, one page at a time. Characters you haven't drawn show the guide in light grey.
+
+| Page | Codes | Characters |
+| --- | --- | --- |
+| 1 BASIC | 32–126 | ASCII: letters, digits, punctuation |
+| 2 SYMBOLS | 128–191 | `← → ↑ ↓ ▲ ▼ ◀ ▶ ♥ ♦ ♣ ♠ ★ ♪ ● ○ ‘ ’ “ ” • … – — € ™ Œ œ ✓ ✗ ■ □`, then Latin-1 punctuation (`¡ ¢ £ ¥ § © « ° ± ² ½ ¿`…) |
+| 3 ACCENTS | 192–255 | Latin-1 letters: `À`–`ÿ`, plus `Æ Ð Ø Þ ß × ÷` |
 
 | Control | Does |
 | --- | --- |
-| D-pad | Pick a character |
+| D-pad | Pick a character. Moving off the top or bottom row turns the page |
+| SELECT | Next page |
 | A | Edit it |
-| START | Type test |
+| START | Menu: type test, challenge, fonts |
 | B | Back to the fonts screen |
 
 **Type test.** Sets text in your font exactly as GB Studio will. It uses the same rules as the exporter:
@@ -44,13 +53,27 @@ Earlier milestones: three fonts on the cartridge, each started from a template (
 - letters drawn in one case used for both
 - word wrap at 144 px
 
-Left/Right cycles through five samples: a pangram, an all-caps pangram, digits and punctuation, a shop-dialogue line, and **your own text**. The screen lists any characters the sample needs that you haven't drawn yet.
+Left/Right cycles through seven samples: a pangram, an all-caps pangram, digits and punctuation, a shop-dialogue line, accented Latin-1, symbols, and **your own text**. The screen lists any characters the sample needs that you haven't drawn yet.
 
 | Control | Does |
 | --- | --- |
 | Left/Right | Change sample |
-| A | Write your own text on the keyboard screen (up to 40 characters): A adds, B deletes, SELECT adds a space, START shows it |
+| A | Write your own text on the keyboard screen (up to 40 characters): A adds, B deletes, SELECT adds a space, START shows it. The keyboard has the same three pages as the map; move off the top or bottom row to turn the page |
 | B | Back to the map |
+
+**Challenge.** From the map's START menu. The same idea as the web Type Making Game: a countdown, then one glyph after another, each with its own timer.
+
+| Setting | Choices |
+| --- | --- |
+| TIME | 3, 5, 7, 10, 15, 20, 30 or 60 seconds per glyph (7 to start) |
+| Characters | A–Z, a–z, 0–9, PUNCTUATION, SYMBOLS, ACCENTS (A–Z, 0–9 and punctuation to start) |
+| ONLY UNDRAWN | On: only the characters this font is missing. Off: every character in the chosen sets |
+
+- START begins the challenge with a 3-2-1-GO countdown. B cancels it.
+- Each glyph starts blank, with the guide off (SELECT shows it). A bar along the top runs down.
+- When the time runs out, the next glyph comes up. START pauses the clock: **RESUME**, **NEXT** (done with this one) or **QUIT**.
+- If you leave a glyph empty, its old drawing (if it had one) comes back. The game saves after every glyph.
+- The results screen shows every glyph from the round, with the ones you missed in light grey. **A** tries one again, timed. **B** goes back to the map.
 
 **Editor.**
 
@@ -78,7 +101,7 @@ The START menu has:
 | G: | Cycle the guide font for this font |
 | DONE | Save and go back to the map |
 
-The editor shows your glyph at actual size in the top-right corner. It also shows the width GB Studio will give it: the ink plus one blank column on each side. The ticks on the left mark the cap line, the x-height and the baseline. They use GB Studio's own metrics: capitals on rows 1–6, x-height on rows 2–6, descenders on row 7.
+SELECT + ←/→ steps through all 223 characters (127 isn't used). The editor shows your glyph at actual size in the top-right corner. It also shows the width GB Studio will give it: the ink plus one blank column on each side. The ticks on the left mark the cap line, the x-height and the baseline. They use GB Studio's own metrics: capitals on rows 1–6, x-height on rows 2–6, descenders on row 7.
 
 If a save fails its checksum, the fonts screen and the map show **SAVE CHECK!**. The game never wipes a save it recognises.
 
@@ -88,9 +111,11 @@ If a save fails its checksum, the fonts screen and the map show **SAVE CHECK!**.
 | --- | --- | --- |
 | Pocket Sans | 5×6 capitals, GB Studio metrics | Drawn for this project (OFL) |
 | Pocket Serif | Slab serifs, GB Studio metrics | Drawn for this project (OFL) |
-| Classic 8×8 | Heavy, full-cell, 7-row capitals | [font8x8](https://github.com/dhepper/font8x8) by Daniel Hepper, public domain |
+| Classic 8×8 | Heavy, full-cell, 7-row capitals | [font8x8](https://github.com/dhepper/font8x8) by Daniel Hepper, public domain (its symbols are bold copies of Pocket Sans's, OFL) |
 
-Each template is a text file in `fonts/` that you can edit. It's converted to C at build time, and `fonts/LICENSES.md` records where each one came from.
+Each template is a text file in `fonts/` that you can edit. It's converted to C at build time, and `fonts/LICENSES.md` records where each one came from. Every template covers all 223 characters. In Pocket Sans and Pocket Serif, the accented letters start from the font's own A–Z and a–z, with accents on rows 0–1; accented capitals drop one row to fit under them, as in IBM's VGA font.
+
+**The character set.** Codes 32–126 are ASCII and 160–255 are Latin-1, which is what GB Studio uses for any character below 256, so those work in GB Studio dialogue as you type them. Codes 128–159 hold the symbols, and the exported `.json` maps each one (`"♥": 136`), so they work as typed too. Code 127 isn't used. The table is `EXTRA` in [`tools/tdpsave.py`](tools/tdpsave.py), mirrored in `web/js/save.js`.
 
 ## Website
 
@@ -99,7 +124,7 @@ Each template is a text file in `fonts/` that you can edit. It's converted to C 
 - **Play.** The ROM runs in [binjgb](https://github.com/binji/binjgb), vendored in `web/vendor/binjgb`. You can use the keyboard (arrows, X = A, Z = B, Enter = START, Shift = SELECT) or the on-screen buttons. The save is kept in the browser's local storage. **Download .sav** saves a copy, and **Load a .sav** restarts the game with one.
 - **Your fonts.** Each slot shows its glyphs, a type-test box and a font name. The fonts come from the running game, refreshed whenever it saves, or from a `.sav` you drop in. Each slot exports as:
   - **GB Studio (.zip)**: the same PNG, JSON and how-to as `tools/sav2font.py`.
-  - **.otf**: one pixel is 125 units on a 1000-unit em, with the baseline under row 6. Glyph placement and widths match the GB Studio export. Pixels are traced into merged outlines, and undrawn characters are left out so apps fall back to another font.
+  - **.otf**: one pixel is 125 units on a 1000-unit em, with the baseline under row 6. Each character sits at its real Unicode code point, so the symbols at 128–159 come out as ← ♥ ★ and so on. Glyph placement and widths match the GB Studio export. Pixels are traced into merged outlines, and undrawn characters are left out so apps fall back to another font.
 - **Checks.**
   - `tests/test_web.py` runs `web/js/save.js` and `otf.js` under Node and compares every glyph, width, outline area and line break with the Python tools.
   - In a browser, I checked that:
@@ -120,12 +145,12 @@ python3 tools/sav2font.py type-designer-pocket.sav --list
 python3 tools/sav2font.py type-designer-pocket.sav --name "My Font" --out fonts-out/
 ```
 
-This writes `my-font.png`, `my-font.json` and `HOW-TO-USE.txt`. Add `--zip` to get a single `my-font-gbstudio.zip` instead. Copy the PNG and JSON into your GB Studio project's `assets/fonts` folder. The PNG follows GB Studio's font format:
+This writes `my-font.png`, `my-font.json` (with the symbol mapping) and `HOW-TO-USE.txt`. Add `--zip` to get a single `my-font-gbstudio.zip` instead. Copy the PNG and JSON into your GB Studio project's `assets/fonts` folder. The PNG follows GB Studio's font format:
 - a 128×112 sheet covering characters 32–255
 - a GB light green background
 - magenta columns marking each character's width
 
-Letters you drew in only one case are used for both. Characters you haven't drawn come out blank, 4 px wide. The script uses only the Python standard library.
+Letters you drew in only one case are used for both, accented ones too (`é` ↔ `É`). Characters you haven't drawn come out blank, 4 px wide. The script uses only the Python standard library.
 
 ## Build
 
@@ -144,12 +169,13 @@ make test
 ```
 
 This creates `.venv`, installs [PyBoy](https://github.com/Baekalfen/PyBoy), and runs `tests/` headless. The tests:
-- drive the game with button presses (draw, erase, switch glyphs, toggle the guide, create fonts from templates, use every editor menu item, type on the keyboard)
+- drive the game with button presses (draw, erase, switch glyphs, toggle the guide, create fonts from templates, use every editor menu item, type on the keyboard, turn the map's pages, play a whole challenge with pause, retry and quit)
 - compare the type test's pixels, line by line, with the same text laid out by the exporter's code
 - power-cycle the cartridge
 - check the save the game writes against `tools/tdpsave.py`
 - export it to a GB Studio sheet
 - load saves written by Python, including a damaged one
+- check that every template covers codes 32–255
 
 Screenshots go to `build/screens/`. Ubuntu needs `python3-venv` installed first.
 
@@ -159,6 +185,7 @@ Screenshots go to `build/screens/`. Ubuntu needs `python3-venv` installed first.
 | --- | --- |
 | MBC | MBC5 + RAM + battery (type `0x1B`) |
 | Save RAM | 8 KB, one bank |
+| ROM | 32 KB: bank 0 plus bank 1, which stays mapped because the game never switches ROM banks. The templates, challenge and type test live in bank 1 (`#pragma bank 1`) |
 | Target | Original Game Boy (DMG) first |
 
 The save holds a 16-byte header and three font slots of 2060 bytes each. Each slot has:
@@ -183,12 +210,13 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | `src/slots.c`, `src/picker.c`, `src/credits.c` | Fonts screen, new-font screen, credits |
 | `src/map.c`, `src/editor.c` | Character map, editor and its menu |
 | `src/typetest.c` | Type test and keyboard |
+| `src/challenge.c` | Challenge setup, countdown and results (the timer runs in the editor) |
 | `src/save.c` | Battery save: format, slots, checksums, write |
 | `src/gfx.c` | Tiles, text, templates, glyph rendering, width rule, variable-width text and word wrap |
 | `src/input.c` | Joypad read in VBlank: every press is counted and handed out one per frame, so taps are never lost or merged |
 | `fonts/*.txt` | Starter templates as editable text art; Pocket Sans is also the UI font |
 | `tools/font2c.py` | Turns the text fonts into C at build time |
-| `tools/import_font8x8.py` | Rebuilds `fonts/classic-8x8.txt` from font8x8's header |
+| `tools/import_font8x8.py` | Rebuilds `fonts/classic-8x8.txt` from font8x8's headers and Pocket Sans's symbols |
 | `tools/tdpsave.py` | Save format (read and write) |
 | `tools/sav2font.py` | Save → GB Studio font |
 | `tools/get-gbdk.sh` | Downloads the pinned GBDK-2020 toolchain |
@@ -206,12 +234,12 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | **M2** ✓ | Templates shown as a ghost under your pixels, three slots, copy/paste/flip/nudge/undo, credits |
 | **M3** ✓ | Type test screen with variable width, per-glyph and space widths |
 | **M4** ✓ | Website: play in the browser, export fonts from the live game or a `.sav` (GB Studio zip and `.otf`) |
-| **M5** | Challenge mode, characters 128–255 |
+| **M5** ✓ | Challenge mode, characters 128–255 (symbols and Latin-1) in the game, templates and exports |
 | **M6** | Sound, title art, Game Boy Color palettes, real hardware |
 
 ## Licences
 
 - **Code:** [MIT](LICENSE).
-- **Fonts:** Pocket Sans and Pocket Serif are under the [SIL Open Font License 1.1](fonts/OFL.txt). Classic 8×8 is public domain. See [`fonts/LICENSES.md`](fonts/LICENSES.md).
+- **Fonts:** Pocket Sans and Pocket Serif are under the [SIL Open Font License 1.1](fonts/OFL.txt). Classic 8×8 is public domain, apart from its symbols (codes 128–159), which are bold copies of Pocket Sans's and so OFL. See [`fonts/LICENSES.md`](fonts/LICENSES.md).
 - **Toolchain:** GBDK-2020's runtime library is GPLv2 with a linking exception, so ROMs built with it can use any licence.
 - **Website:** binjgb by Ben Smith and opentype.js by Frederik De Bleser, both MIT; their licences are in `web/vendor/`.

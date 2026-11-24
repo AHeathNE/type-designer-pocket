@@ -11,6 +11,9 @@
 //
 //  Width mode (from the menu): Left/Right set a fixed GB Studio width, B goes back to automatic, A done.
 //  Two dashed lines show where the glyph starts and where the next one begins once it's set in text.
+//
+//  In a challenge (chal_on) row 0 is a timer bar, START pauses (resume, next glyph, quit), the guide starts
+//  off, and the glyph starts blank: if time runs out with nothing drawn, the old drawing comes back.
 #include <gb/gb.h>
 #include <string.h>
 #include "app.h"
@@ -22,6 +25,8 @@
 #define CANVAS_Y 1
 #define HINTS "A:INK B:RUB ST:MENU"
 #define MSG_FRAMES 90
+#define PREVIEW_TILE 0
+#define REF_TILE 1
 
 #define UNDO_MAX 16   // power of two
 
@@ -43,6 +48,11 @@ static uint8_t menu_open, menu_sel, nudging, widthing, msg_timer;
 static uint8_t undo_buf[UNDO_MAX][8];
 static uint8_t undo_top, undo_count;
 static uint8_t clip[8], has_clip;
+
+// challenge
+static uint16_t deadline, total, paused_left;
+static uint8_t bar_px, saved_guide;
+static uint8_t backup[8];
 
 static uint8_t pix(uint8_t x, uint8_t y) {
     return (font.glyphs[current][y] >> (7 - x)) & 1;
@@ -66,23 +76,32 @@ static void draw_canvas(void) {
 }
 
 static void draw_width(void) {
+    if (chal_on) return;   // row 0 is the timer bar
     text(7, 0, "W");
     text_num(8, 0, glyph_width(current));
     if (font.widths[current] != WIDTH_AUTO) set_bkg_tile_xy(9, 0, TILE_UI('*'));
 }
 
 static void draw_header(void) {
-    set_bkg_tile_xy(0, 0, TILE_UI(FIRST_CODE + current));
-    text(2, 0, "#");
-    text_num(3, 0, FIRST_CODE + current);
-    draw_width();
-    text(14, 0, "SEL<>");
-    glyph_tile(current, 0);
-    set_bkg_tile_xy(19, 1, current);
+    set_bkg_tile_xy(0, 0, ref_tile(current, REF_TILE));
+    if (!chal_on) {
+        text(2, 0, "#");
+        text_num(3, 0, FIRST_CODE + current);
+        draw_width();
+        text(14, 0, "SEL<>");
+    }
+    glyph_tile(PREVIEW_TILE, current, 0);
+    set_bkg_tile_xy(19, 1, PREVIEW_TILE);
 }
 
 static void show_hints(void) {
-    text_pad(0, 17, HINTS, 20);
+    if (chal_on) {   // "12/24     ST:PAUSE"
+        text_pad(0, 17, "", 20);
+        text_frac(0, 17, chal_retry ? 1 : chal_pos + 1, chal_retry ? 1 : chal_n, 7);
+        text(12, 17, "ST:PAUSE");
+    } else {
+        text_pad(0, 17, HINTS, 20);
+    }
     msg_timer = 0;
 }
 
@@ -104,7 +123,7 @@ static void place_cursor(void) {
 static void glyph_changed(void) {
     dirty = 1;
     draw_canvas();
-    glyph_tile(current, 0);
+    glyph_tile(PREVIEW_TILE, current, 0);
     draw_width();
 }
 
@@ -137,7 +156,7 @@ static void set_pix(uint8_t x, uint8_t y, uint8_t v) {
     else font.glyphs[current][y] &= ~bit;
     dirty = 1;
     draw_cell(x, y);
-    glyph_tile(current, 0);
+    glyph_tile(PREVIEW_TILE, current, 0);
     draw_width();
 }
 
@@ -150,8 +169,7 @@ static void save_if_dirty(void) {
 
 static void switch_glyph(int8_t dir) {
     save_if_dirty();
-    if (dir < 0) current = current ? current - 1 : EDIT_COUNT - 1;
-    else current = (current + 1 < EDIT_COUNT) ? current + 1 : 0;
+    current = glyph_step(current, dir);
     undo_count = 0;   // undo history belongs to one glyph
     draw_header();
     draw_canvas();
@@ -362,6 +380,90 @@ static uint8_t menu_update(void) {
     return SCR_STAY;
 }
 
+// ---- challenge: timer bar, pause menu, one glyph after another ----
+
+static void bar_draw(uint16_t left) {
+    uint8_t px = (uint8_t)(((uint32_t)left * 128u) / total), t, f;
+    if (px == bar_px) return;
+    bar_px = px;
+    for (t = 0; t < 16; t++) {
+        f = px > t * 8 ? px - t * 8 : 0;
+        set_bkg_tile_xy(2 + t, 0, TILE_BAR + (f > 8 ? 8 : f));
+    }
+}
+
+static void chal_glyph_start(void) {
+    current = chal_list[chal_pos];
+    memcpy(backup, font.glyphs[current], 8);
+    memset(font.glyphs[current], 0, 8);   // start blank, as in the web game
+    undo_count = 0;
+    stroke_pending = 0;
+    draw_header();
+    draw_canvas();
+    show_hints();
+    total = (uint16_t)chal_seconds * 60u;
+    deadline = sys_time + total;
+    bar_px = 0xFF;
+    bar_draw(total);
+}
+
+// This glyph is over (time ran out, NEXT, or QUIT): keep what was drawn, or the old drawing if nothing was.
+static uint8_t chal_finish(void) {
+    if (!glyph_has_ink(current)) memcpy(font.glyphs[current], backup, 8);
+    if (memcmp(backup, font.glyphs[current], 8)) save_write();
+    dirty = 0;
+    chal_pos++;
+    if (chal_retry || chal_pos >= chal_n) {
+        guide = saved_guide;
+        return SCR_RESULTS;
+    }
+    chal_glyph_start();
+    return SCR_STAY;
+}
+
+enum { P_RESUME, P_NEXT, P_QUIT, PAUSE_COUNT };
+static const char *const pause_labels[PAUSE_COUNT] = {"RESUME", "NEXT", "QUIT"};
+
+static void pause_draw(void) {
+    uint8_t i;
+    fill_win_rect(0, 0, 9, 6, TILE_BLANK);
+    set_win_tile_xy(0, 0, TILE_FRAME_C);
+    for (i = 1; i < 9; i++) set_win_tile_xy(i, 0, TILE_FRAME_H);
+    for (i = 1; i < 6; i++) set_win_tile_xy(0, i, TILE_FRAME_V);
+    win_text(2, 0, "PAUSED");
+    for (i = 0; i < PAUSE_COUNT; i++) {
+        win_text(1, 1 + i, i == menu_sel ? ">" : " ");
+        win_text(2, 1 + i, pause_labels[i]);
+    }
+}
+
+static void pause_show(void) {
+    paused_left = deadline - sys_time;
+    menu_open = 1;
+    menu_sel = 0;
+    hide_sprites();
+    pause_draw();
+    move_win(MENU_X * 8 + 7, MENU_Y * 8);
+    SHOW_WIN;
+}
+
+static uint8_t pause_update(void) {
+    uint8_t pick = 0xFF;
+    if (pressed & (J_B | J_START)) pick = P_RESUME;
+    if (moves & J_UP) { menu_sel = menu_sel ? menu_sel - 1 : PAUSE_COUNT - 1; pause_draw(); }
+    if (moves & J_DOWN) { menu_sel = (menu_sel + 1) % PAUSE_COUNT; pause_draw(); }
+    if (pressed & J_A) pick = menu_sel;
+    if (pick == 0xFF) return SCR_STAY;
+    menu_close();
+    deadline = sys_time + paused_left;
+    if (pick == P_NEXT) return chal_finish();
+    if (pick == P_QUIT) {
+        chal_n = chal_pos + 1;   // the results show the glyphs reached so far
+        return chal_finish();
+    }
+    return SCR_STAY;
+}
+
 // ---- screen ----
 
 void editor_enter(void) {
@@ -388,6 +490,11 @@ void editor_enter(void) {
     nudging = 0;
     widthing = 0;
     undo_count = 0;
+    if (chal_on) {
+        saved_guide = guide;
+        guide = 0;
+        chal_glyph_start();
+    }
     SHOW_BKG;
     SHOW_SPRITES;
     DISPLAY_ON;
@@ -398,6 +505,13 @@ uint8_t editor_update(void) {
 
     if (msg_timer && --msg_timer == 0) show_hints();
 
+    if (chal_on) {
+        uint16_t left;
+        if (menu_open) return pause_update();
+        left = deadline - sys_time;
+        if ((int16_t)left <= 0) return chal_finish();
+        bar_draw(left);
+    }
     if (menu_open) return menu_update();
     if (widthing) {
         width_update();
@@ -425,14 +539,15 @@ uint8_t editor_update(void) {
         select_combo = 0;
     }
     if (keys & J_SELECT) {
-        if (pressed & J_LEFT) { switch_glyph(-1); select_combo = 1; }
-        if (pressed & J_RIGHT) { switch_glyph(1); select_combo = 1; }
+        if ((pressed & J_LEFT) && !chal_on) { switch_glyph(-1); select_combo = 1; }
+        if ((pressed & J_RIGHT) && !chal_on) { switch_glyph(1); select_combo = 1; }
         if (pressed & J_B) { undo(); select_combo = 1; }
         return SCR_STAY;
     }
 
     if (pressed & J_START) {
-        menu_show();
+        if (chal_on) pause_show();
+        else menu_show();
         return SCR_STAY;
     }
 

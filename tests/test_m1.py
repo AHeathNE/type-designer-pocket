@@ -115,7 +115,11 @@ class M1(unittest.TestCase):
 
         out = self.tmp / "out"
         self.assertEqual(sav2font.main([str(self.ram), "--out", str(out), "--name", "Test Font"]), 0)
-        self.assertEqual(json.loads((out / "test-font.json").read_text()), {"name": "Test Font", "mapping": {}})
+        meta = json.loads((out / "test-font.json").read_text(encoding="utf-8"))
+        self.assertEqual(meta["name"], "Test Font")
+        self.assertEqual(meta["mapping"]["←"], 128)              # the symbols, 128-159
+        self.assertEqual(meta["mapping"]["□"], 159)
+        self.assertEqual(len(meta["mapping"]), 32)
         self.assertTrue((out / "HOW-TO-USE.txt").exists())
         img = Image.open(out / "test-font.png").convert("RGB")
         self.assertEqual(img.size, (128, 112))

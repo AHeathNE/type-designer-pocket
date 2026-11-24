@@ -2,7 +2,7 @@
 //
 //  row 0        TYPE DESIGNER POCKET
 //  rows 3-4, 6-7, 9-10   > FONT 1        12/95
-//                          POCKET SANS   (or SAVE CHECK!)
+//                          POCKET SANS     +3   (or SAVE CHECK!; +n counts codes 128-255)
 //  rows 13-15   hints
 #include <gb/gb.h>
 #include "app.h"
@@ -31,6 +31,10 @@ void slots_enter(void) {
         text_num(14, y, info.drawn);
         text(info.drawn >= 10 ? 16 : 15, y, "/95");
         text(3, y + 1, info.ok ? template_name(info.template_id) : "SAVE CHECK!");
+        if (info.drawn_ext) {   // codes 128-255 drawn too: "+12"
+            set_bkg_tile_xy(16, y + 1, TILE_UI('+'));
+            text_num(17, y + 1, info.drawn_ext);
+        }
     }
     draw_cursor();
     text(1, 13, "A:OPEN");
