@@ -12,10 +12,10 @@ typedef void (*enter_fn)(void);
 typedef uint8_t (*update_fn)(void);
 static const enter_fn enters[] = {slots_enter, picker_enter, credits_enter, map_enter, editor_enter,
                                   typetest_enter, keyboard_enter, challenge_enter, countdown_enter,
-                                  results_enter};
+                                  results_enter, learn_enter};
 static const update_fn updates[] = {slots_update, picker_update, credits_update, map_update, editor_update,
                                     typetest_update, keyboard_update, challenge_update, countdown_update,
-                                    results_update};
+                                    results_update, learn_update};
 
 void main(void) {
     uint8_t screen = SCR_SLOTS, next;

@@ -150,7 +150,7 @@ class Game:
 
     def menu(self, item):
         """Run an editor menu item by its position:
-        0 UNDO, 1 COPY, 2 PASTE, 3 FLIP H, 4 FLIP V, 5 NUDGE, 6 WIDTH, 7 CLEAR, 8 G:, 9 DONE."""
+        0 UNDO, 1 COPY, 2 PASTE, 3 FLIP H, 4 FLIP V, 5 NUDGE, 6 WIDTH, 7 CLEAR, 8 FROM, 9 G:, 10 DONE."""
         self.press("start")
         for _ in range(item):
             self.press("down")

@@ -140,6 +140,18 @@ uint8_t save_active(void) {
     return header.active;
 }
 
+uint8_t save_order(void) {
+    return header.order < 4 ? header.order : 0;
+}
+
+void save_set_order(uint8_t order) {
+    header.order = order;
+    ENABLE_RAM;
+    SWITCH_RAM(0);
+    write_header();
+    DISABLE_RAM;
+}
+
 void save_select(uint8_t slot) {
     ENABLE_RAM;
     SWITCH_RAM(0);

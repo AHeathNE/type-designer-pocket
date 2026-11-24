@@ -6,6 +6,8 @@ Working title.
 
 ## Status
 
+**M6: design orders and LEARN.** Draw in the order type designers use (n o H O first, a test word, or the most frequent letters), start a glyph from a related one (h from n, b from a mirrored d, é from e), and learn the parts of a letter and where fonts come from in 20 illustrated pages.
+
 **M5: challenge mode and the full character set.** A timed challenge, like the web Type Making Game: pick the seconds per glyph and which characters, then draw each one before its timer runs out. Fonts now cover all of GB Studio's codes 32–255: ASCII, symbols (arrows, card suits, hearts, stars, curly quotes and more) and Latin-1 accents, and all three templates come with them.
 
 **M4: the website.** Play in the browser, and export your fonts as a GB Studio zip or an `.otf`, straight from the running game or from any `.sav`.
@@ -22,7 +24,8 @@ Earlier milestones: three fonts on the cartridge, each started from a template (
 | --- | --- |
 | Up/Down, A | Pick a font and open it |
 | START | New font in that slot |
-| SELECT | Credits |
+| SELECT | LEARN |
+| B | Credits |
 
 **New font.**
 - Pick the **guide** with Left/Right: Pocket Sans, Pocket Serif, Classic 8×8 or no guide.
@@ -44,8 +47,28 @@ Earlier milestones: three fonts on the cartridge, each started from a template (
 | D-pad | Pick a character. Moving off the top or bottom row turns the page |
 | SELECT | Next page |
 | A | Edit it |
-| START | Menu: type test, challenge, fonts |
+| START | Menu (below) |
 | B | Back to the fonts screen |
+
+Row 2 shows **NEXT:**, the next character you haven't drawn in the design order. The START menu has:
+
+| Item | Does |
+| --- | --- |
+| TYPE TEST | See text set in your font |
+| CHALLENGE | Draw against the clock (below) |
+| NEXT GLYPH | Jump to the next undrawn character in the design order |
+| ORDER | A cycles the design order. It's kept in the save and used by NEXT, the editor's SELECT + ←/→ and the challenge |
+| LEARN | The LEARN pages, coming back here |
+| FONTS | Back to the fonts screen |
+
+| Order | Draws first | Why |
+| --- | --- | --- |
+| A-Z | Code order: punctuation, digits, A–Z, a–z, then symbols and accents | The GB Studio sheet's order |
+| CONTROL | `n o`, then straights (`h m u r l i`), rounds (`c e d b p q`), diagonals (`v w x y k z`), the rest; then `H O`, `E F L T I`, `C G D Q`, `B P R U J`, `A V W X Y K M N Z S` | n and o set the stems, spacing and curves, and every family borrows from them |
+| HAMBURG | `hamburgefonstiv`, then `HAMBURGEFONSTIV` | A classic type designer's test word that shows a font's style fast |
+| FREQUENT | `e t a o i n s h r d l c u m w f g y p b v k j x q z`, then the capitals the same way | Real English words read soonest |
+
+Everything an order doesn't list follows in code order.
 
 **Type test.** Sets text in your font exactly as GB Studio will. It uses the same rules as the exporter:
 - variable width
@@ -98,12 +121,21 @@ The START menu has:
 | NUDGE | Move the whole glyph with the d-pad; A when done |
 | WIDTH | Set a fixed GB Studio width with Left/Right; B goes back to automatic. Dashed lines show where the glyph starts and where the next one begins. On the space, this sets the word spacing. A fixed width shows as `W5*` |
 | CLEAR | Empty the glyph |
+| FROM | Start from a related glyph, shown next to it: h m r from n, u from n turned over, b from d mirrored, accented letters from their base letter, `)` from `(`, and so on. One undo step takes it back. `-` means there's no source |
 | G: | Cycle the guide font for this font |
 | DONE | Save and go back to the map |
 
-SELECT + ←/→ steps through all 223 characters (127 isn't used). The editor shows your glyph at actual size in the top-right corner. It also shows the width GB Studio will give it: the ink plus one blank column on each side. The ticks on the left mark the cap line, the x-height and the baseline. They use GB Studio's own metrics: capitals on rows 1–6, x-height on rows 2–6, descenders on row 7.
+SELECT + ←/→ steps through all 223 characters (127 isn't used), in the design order chosen on the map. The editor shows your glyph at actual size in the top-right corner. It also shows the width GB Studio will give it: the ink plus one blank column on each side. The ticks on the left mark the cap line, the x-height and the baseline. They use GB Studio's own metrics: capitals on rows 1–6, x-height on rows 2–6, descenders on row 7.
 
 If a save fails its checksum, the fonts screen and the map show **SAVE CHECK!**. The game never wipes a save it recognises.
+
+**LEARN.** Twenty short pages, each with one or two letters drawn big, the part being explained in dark grey (or a space like a counter in light grey) and guide lines for the baseline, x-height and cap height. Left/Right turns the page; B goes back.
+
+| Pages | Topics |
+| --- | --- |
+| 1–10 | The parts of a letter: baseline, cap height, x-height, ascenders and descenders, stems, bowls and counters, crossbars, apex and vertex, serifs, accents |
+| 11–15 | Designing: spacing, control letters, letter families, test words, letter frequency |
+| 16–20 | Where fonts come from: movable type, roman and sans serif type, bitmap fonts, Game Boy tiles, proportional and monospace |
 
 ## Starter templates
 
@@ -176,6 +208,7 @@ This creates `.venv`, installs [PyBoy](https://github.com/Baekalfen/PyBoy), and 
 - export it to a GB Studio sheet
 - load saves written by Python, including a damaged one
 - check that every template covers codes 32–255
+- check every LEARN page shows all of its text within the screen
 
 Screenshots go to `build/screens/`. Ubuntu needs `python3-venv` installed first.
 
@@ -185,10 +218,10 @@ Screenshots go to `build/screens/`. Ubuntu needs `python3-venv` installed first.
 | --- | --- |
 | MBC | MBC5 + RAM + battery (type `0x1B`) |
 | Save RAM | 8 KB, one bank |
-| ROM | 32 KB: bank 0 plus bank 1, which stays mapped because the game never switches ROM banks. The templates, challenge and type test live in bank 1 (`#pragma bank 1`) |
+| ROM | 32 KB: bank 0 plus bank 1, which stays mapped because the game never switches ROM banks. The templates, challenge, type test, orders and LEARN live in bank 1 (`#pragma bank 1`) |
 | Target | Original Game Boy (DMG) first |
 
-The save holds a 16-byte header and three font slots of 2060 bytes each. Each slot has:
+The save holds a 16-byte header (which also keeps the design order) and three font slots of 2060 bytes each. Each slot has:
 - a name and the space width
 - a width setting for each glyph
 - 224 glyphs, 8 bytes each (one byte per row)
@@ -211,6 +244,8 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | `src/map.c`, `src/editor.c` | Character map, editor and its menu |
 | `src/typetest.c` | Type test and keyboard |
 | `src/challenge.c` | Challenge setup, countdown and results (the timer runs in the editor) |
+| `src/order.c` | Design orders and the START FROM sources |
+| `src/learn.c` | The LEARN pages: text and diagrams |
 | `src/save.c` | Battery save: format, slots, checksums, write |
 | `src/gfx.c` | Tiles, text, templates, glyph rendering, width rule, variable-width text and word wrap |
 | `src/input.c` | Joypad read in VBlank: every press is counted and handed out one per frame, so taps are never lost or merged |
@@ -235,7 +270,8 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | **M3** ✓ | Type test screen with variable width, per-glyph and space widths |
 | **M4** ✓ | Website: play in the browser, export fonts from the live game or a `.sav` (GB Studio zip and `.otf`) |
 | **M5** ✓ | Challenge mode, characters 128–255 (symbols and Latin-1) in the game, templates and exports |
-| **M6** | Sound, title art, Game Boy Color palettes, real hardware |
+| **M6** ✓ | Design orders, START FROM, LEARN pages |
+| **M7** | Sound, title art, Game Boy Color palettes, real hardware. ROM bank 1 is nearly full, so this starts with real bank switching |
 
 ## Licences
 

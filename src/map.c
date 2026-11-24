@@ -2,10 +2,12 @@
 //
 //  row 0   page title, page number
 //  row 1   slot name, guide font
+//  row 2   SAVE CHECK! (left), NEXT: the next undrawn glyph in the design order (right)
 //  rows 3-13 (odd)  glyph rows, columns 2-17
 //  row 15  selected: reference char, your glyph, code, width
 //  row 16  DRAWN n/95 on this page, SEL hint
-//  row 17  hints; START opens a menu (type test, challenge, fonts) in the window over rows 12-17
+//  row 17  hints; START opens a menu in the window over rows 10-17: type test, challenge, next glyph,
+//          design order, learn, fonts
 #include <gb/gb.h>
 #include "app.h"
 #include "gfx.h"
@@ -15,11 +17,15 @@
 #define GRID_X 2
 #define GRID_Y 3
 #define REF_TILE 100
-#define MENU_X 8
-#define MENU_Y 12
-enum { MI_TEST, MI_CHALLENGE, MI_FONTS, MAP_MENU_COUNT };
-static const char *const menu_labels[MAP_MENU_COUNT] = {"TYPE TEST", "CHALLENGE", "FONTS"};
-static const uint8_t menu_targets[MAP_MENU_COUNT] = {SCR_TYPETEST, SCR_CHALLENGE, SCR_SLOTS};
+#define NEXT_TILE 101
+#define MENU_X 4
+#define MENU_Y 10
+#define MENU_W 16
+enum { MI_TEST, MI_CHALLENGE, MI_NEXT, MI_ORDER, MI_LEARN, MI_FONTS, MAP_MENU_COUNT };
+static const char *const menu_labels[MAP_MENU_COUNT] = {"TYPE TEST", "CHALLENGE", "NEXT GLYPH", "ORDER",
+                                                        "LEARN", "FONTS"};
+static const uint8_t menu_targets[MAP_MENU_COUNT] = {SCR_TYPETEST, SCR_CHALLENGE, SCR_STAY, SCR_STAY,
+                                                     SCR_LEARN, SCR_SLOTS};
 
 static uint8_t page, menu_open, menu_sel;
 
@@ -42,6 +48,16 @@ static void draw_count(void) {
     text_frac(6, 16, n, cells, 5);
 }
 
+static void draw_next(void) {
+    uint8_t n = order_next_undrawn();
+    if (n == 0xFF) {
+        text_pad(13, 2, "", 7);
+        return;
+    }
+    text(14, 2, "NEXT:");
+    set_bkg_tile_xy(19, 2, ref_tile(n, NEXT_TILE));
+}
+
 static void draw_page(void) {
     uint8_t k, cells = page_cells[page];
     text_pad(0, 0, page_titles[page], 17);
@@ -59,15 +75,16 @@ static void draw_page(void) {
 
 static void menu_draw(void) {
     uint8_t i;
-    fill_win_rect(0, 0, 12, 6, TILE_BLANK);
+    fill_win_rect(0, 0, MENU_W, MAP_MENU_COUNT + 2, TILE_BLANK);
     set_win_tile_xy(0, 0, TILE_FRAME_C);
-    for (i = 1; i < 12; i++) set_win_tile_xy(i, 0, TILE_FRAME_H);
-    for (i = 1; i < 6; i++) set_win_tile_xy(0, i, TILE_FRAME_V);
+    for (i = 1; i < MENU_W; i++) set_win_tile_xy(i, 0, TILE_FRAME_H);
+    for (i = 1; i < MAP_MENU_COUNT + 2; i++) set_win_tile_xy(0, i, TILE_FRAME_V);
     for (i = 0; i < MAP_MENU_COUNT; i++) {
         win_text(1, 1 + i, i == menu_sel ? ">" : " ");
         win_text(2, 1 + i, menu_labels[i]);
     }
-    win_text(2, 5, "B:CLOSE");
+    win_text(8, 1 + MI_ORDER, order_names[save_order()]);   // A cycles it
+    win_text(2, MAP_MENU_COUNT + 1, "B:CLOSE");
 }
 
 static uint8_t menu_update(void) {
@@ -81,7 +98,29 @@ static uint8_t menu_update(void) {
     if (moves & J_UP) { menu_sel = menu_sel ? menu_sel - 1 : MAP_MENU_COUNT - 1; menu_draw(); }
     if (moves & J_DOWN) { menu_sel = (menu_sel + 1) % MAP_MENU_COUNT; menu_draw(); }
     if (pressed & J_A) {
+        if (menu_sel == MI_ORDER) {   // stays open, so you can keep cycling
+            save_set_order((save_order() + 1) % ORDER_COUNT);
+            menu_draw();
+            draw_next();
+            return SCR_STAY;
+        }
+        if (menu_sel == MI_NEXT) {    // jump to the next undrawn glyph in the order
+            uint8_t n = order_next_undrawn();
+            menu_open = 0;
+            HIDE_WIN;
+            bars_show();
+            if (n != 0xFF) {
+                current = n;
+                if (page_of(n) != page) {
+                    page = page_of(n);
+                    draw_page();
+                }
+            }
+            draw_info();
+            return SCR_STAY;
+        }
         menu_open = 0;
+        learn_back = SCR_MAP;
         return menu_targets[menu_sel];
     }
     return SCR_STAY;
@@ -99,6 +138,7 @@ void map_enter(void) {
     for (i = 0; i < 12 && font.name[i]; i++) set_bkg_tile_xy(i, 1, TILE_UI(font.name[i]));
     text(14, 1, font.template_id < TEMPLATE_COUNT ? template_short[font.template_id] : "-");
     if (save_status == SAVE_DAMAGED) text(0, 2, "SAVE CHECK!");
+    draw_next();
     draw_page();
     text(12, 16, "SEL:PAGE");
     text(0, 17, "A:EDIT  START:MENU");

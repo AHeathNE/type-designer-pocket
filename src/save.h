@@ -18,7 +18,8 @@ typedef struct {
     uint8_t version;      // 1
     uint8_t slot_count;   // 3
     uint8_t active;       // slot shown at boot
-    uint8_t reserved[7];
+    uint8_t order;        // design order (order.c): 0 A-Z, 1 control, 2 hamburgefonstiv, 3 frequency
+    uint8_t reserved[6];
     uint16_t crc;         // CRC-16/CCITT-FALSE of the 14 bytes above
 } SaveHeader;             // 16 bytes
 
@@ -50,6 +51,8 @@ extern uint8_t save_status;
 void save_init(void);
 void save_write(void);                       // write the active slot
 uint8_t save_active(void);
+uint8_t save_order(void);
+void save_set_order(uint8_t order);          // written to the header straight away
 void save_select(uint8_t slot);              // make a slot active and load it into `font`
 void save_slot_info(uint8_t slot, SlotInfo *out);
 void save_reset(uint8_t template_id, const glyph_t *copy_from);  // blank the active slot, keep its name;

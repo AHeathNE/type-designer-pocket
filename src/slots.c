@@ -3,7 +3,7 @@
 //  row 0        TYPE DESIGNER POCKET
 //  rows 3-4, 6-7, 9-10   > FONT 1        12/95
 //                          POCKET SANS     +3   (or SAVE CHECK!; +n counts codes 128-255)
-//  rows 13-15   hints
+//  rows 13-16   hints
 #include <gb/gb.h>
 #include "app.h"
 #include "gfx.h"
@@ -39,7 +39,8 @@ void slots_enter(void) {
     draw_cursor();
     text(1, 13, "A:OPEN");
     text(1, 14, "START:NEW FONT");
-    text(1, 15, "SELECT:CREDITS");
+    text(1, 15, "SELECT:LEARN");
+    text(1, 16, "B:CREDITS");
     SHOW_BKG;
     DISPLAY_ON;
 }
@@ -55,6 +56,10 @@ uint8_t slots_update(void) {
         picker_slot = sel;
         return SCR_PICKER;
     }
-    if (pressed & J_SELECT) return SCR_CREDITS;
+    if (pressed & J_SELECT) {
+        learn_back = SCR_SLOTS;
+        return SCR_LEARN;
+    }
+    if (pressed & J_B) return SCR_CREDITS;
     return SCR_STAY;
 }

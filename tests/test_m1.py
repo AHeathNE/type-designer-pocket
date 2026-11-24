@@ -177,7 +177,7 @@ class M1(unittest.TestCase):
         self.assertEqual(game.text(7), "   POCKET SANS")   # the other slots are fine
         game.open_slot(1)
         game.shot("m1-map-damaged")
-        self.assertEqual(game.text(2), "SAVE CHECK!")
+        self.assertEqual(game.text(2)[:12], "SAVE CHECK! ")
         game.power_off(save=True)
         self.assertEqual(self.ram.read_bytes(), bytes(data), "a damaged save must be left untouched")
         with self.assertRaises(SystemExit):

@@ -7,7 +7,8 @@ Layout, little-endian, starting at the beginning of the 8 KB save RAM (0xA000 on
     4   version      1
     5   slot_count   3
     6   active       slot shown at boot
-    7   reserved     7 bytes, zero
+    7   order        design order: 0 A-Z, 1 control (n o H O first), 2 hamburgefonstiv, 3 frequency
+    8   reserved     6 bytes, zero
     14  crc16        CRC-16/CCITT-FALSE of bytes 0-13
 
   Slot i at 16 + i * 2064 (2060 bytes used, 4 spare)
@@ -125,6 +126,7 @@ class Save:
     slots: list
     active: int = 0
     header_ok: bool = True
+    order: int = 0
 
 
 class NotASave(ValueError):
@@ -143,13 +145,14 @@ def parse(data):
     (hcrc,) = struct.unpack_from("<H", data, 14)
     count = min(count, SLOT_COUNT)
     slots = [Slot.unpack(data[HEADER_SIZE + i * SLOT_STRIDE : HEADER_SIZE + i * SLOT_STRIDE + SLOT_SIZE]) for i in range(count)]
-    return Save(slots=slots, active=active if active < count else 0, header_ok=crc16(data[:14]) == hcrc)
+    return Save(slots=slots, active=active if active < count else 0, header_ok=crc16(data[:14]) == hcrc,
+                order=data[7])
 
 
-def build(slots, active=0):
+def build(slots, active=0, order=0):
     """Build a full 8 KB save image from up to SLOT_COUNT slots (missing slots are blank)."""
     slots = list(slots) + [Slot(name=f"FONT {i + 1}") for i in range(len(slots), SLOT_COUNT)]
-    head = MAGIC + bytes([VERSION, SLOT_COUNT, active]) + bytes(7)
+    head = MAGIC + bytes([VERSION, SLOT_COUNT, active, order]) + bytes(6)
     out = bytearray(SAVE_SIZE)
     out[0:16] = head + struct.pack("<H", crc16(head))
     for i, s in enumerate(slots[:SLOT_COUNT]):

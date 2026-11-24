@@ -7,7 +7,10 @@
 //  D-pad move (hold to repeat)     A paint (toggles; hold A and move to keep painting)
 //  B erase (hold and move)         SELECT + Left/Right previous/next glyph
 //  SELECT tap  guide on/off        SELECT + B undo
-//  START       menu: undo, copy, paste, flip, nudge, width, clear, guide font, done
+//  START       menu: undo, copy, paste, flip, nudge, width, clear, start from, guide font, done
+//
+//  SELECT + Left/Right follows the design order chosen on the map (order.c). START FROM copies a related
+//  glyph in to adapt (h from n, b from d mirrored, é from e...).
 //
 //  Width mode (from the menu): Left/Right set a fixed GB Studio width, B goes back to automatic, A done.
 //  Two dashed lines show where the glyph starts and where the next one begins once it's set in text.
@@ -31,10 +34,12 @@
 #define UNDO_MAX 16   // power of two
 
 #define MENU_X 11     // window position, in tiles
-#define MENU_Y 6
-enum { M_UNDO, M_COPY, M_PASTE, M_FLIPH, M_FLIPV, M_NUDGE, M_WIDTH, M_CLEAR, M_GUIDE, M_DONE, MENU_COUNT };
+#define MENU_Y 5
+enum { M_UNDO, M_COPY, M_PASTE, M_FLIPH, M_FLIPV, M_NUDGE, M_WIDTH, M_CLEAR, M_FROM, M_GUIDE, M_DONE,
+       MENU_COUNT };
 static const char *const menu_labels[MENU_COUNT] = {
-    "UNDO", "COPY", "PASTE", "FLIP H", "FLIP V", "NUDGE", "WIDTH", "CLEAR", 0, "DONE"};
+    "UNDO", "COPY", "PASTE", "FLIP H", "FLIP V", "NUDGE", "WIDTH", "CLEAR", "FROM", 0, "DONE"};
+#define FROM_TILE 2
 #define MARK_SPRITE 4   // sprites 4-11 start line, 12-19 advance line
 
 static uint8_t cx = 1, cy = 1;   // cursor, in glyph pixels
@@ -169,7 +174,7 @@ static void save_if_dirty(void) {
 
 static void switch_glyph(int8_t dir) {
     save_if_dirty();
-    current = glyph_step(current, dir);
+    current = order_step(current, dir);
     undo_count = 0;   // undo history belongs to one glyph
     draw_header();
     draw_canvas();
@@ -267,13 +272,18 @@ static void width_update(void) {
 static void menu_draw(void) {
     uint8_t i;
     const char *label;
-    fill_win_rect(0, 0, 9, 12, TILE_BLANK);
+    uint16_t from = from_source(FIRST_CODE + current);
+    fill_win_rect(0, 0, 9, MENU_COUNT + 2, TILE_BLANK);
     set_win_tile_xy(0, 0, TILE_FRAME_C);
     for (i = 1; i < 9; i++) set_win_tile_xy(i, 0, TILE_FRAME_H);
-    for (i = 1; i < 12; i++) set_win_tile_xy(0, i, TILE_FRAME_V);
+    for (i = 1; i < MENU_COUNT + 2; i++) set_win_tile_xy(0, i, TILE_FRAME_V);
     for (i = 0; i < MENU_COUNT; i++) {
         label = menu_labels[i];
-        if (i == M_GUIDE) {
+        if (i == M_FROM) {   // "FROM n", the source drawn in Pocket Sans
+            win_text(2, 1 + i, label);
+            if (from == 0xFFFF) win_text(7, 1 + i, "-");
+            else set_win_tile_xy(7, 1 + i, ref_tile((uint8_t)from, FROM_TILE));
+        } else if (i == M_GUIDE) {
             win_text(2, 1 + i, "G:");
             label = font.template_id < TEMPLATE_COUNT ? template_short[font.template_id] : "OFF";
             win_text(4, 1 + i, label);
@@ -282,7 +292,7 @@ static void menu_draw(void) {
         }
         if (i == menu_sel) win_text(1, 1 + i, ">");
     }
-    win_text(1, 11, "B:CLOSE");
+    win_text(1, MENU_COUNT + 1, "B:CLOSE");
 }
 
 static void menu_show(void) {
@@ -364,6 +374,25 @@ static uint8_t menu_update(void) {
         glyph_changed();
         message("CLEARED");
         break;
+    case M_FROM: {
+        uint16_t from = from_source(FIRST_CODE + current);
+        uint8_t src = (uint8_t)from;
+        if (from == 0xFFFF) {
+            message("NO SOURCE FOR THIS");
+            break;
+        }
+        if (!glyph_has_ink(src)) {
+            message("SOURCE NOT DRAWN");
+            break;
+        }
+        snapshot();
+        memcpy(font.glyphs[current], font.glyphs[src], 8);
+        if (from & 0x100) flip_h();
+        if (from & 0x200) flip_v();
+        glyph_changed();
+        message("STARTED FROM IT");
+        break;
+    }
     case M_GUIDE:
         font.template_id = template_next(font.template_id);
         dirty = 1;

@@ -45,7 +45,7 @@ class M2(unittest.TestCase):
 
     def test_credits(self):
         game = Game(self.rom)
-        game.press("select")
+        game.press("b")
         game.wait_for(lambda: game.text(0) == "CREDITS", "the credits")
         game.shot("m2-credits")
         lines = "\n".join(game.screen())
@@ -171,8 +171,9 @@ class M2(unittest.TestCase):
         game.press("start")
         game.shot("m2-menu")
         self.assertEqual(game.win_text(1), "|>UNDO")
-        self.assertEqual(game.win_text(9), "| G:SANS")
-        self.assertEqual(game.win_text(11), "|B:CLOSE")
+        self.assertEqual(game.win_text(9), "| FROM -")             # A has no source to start from
+        self.assertEqual(game.win_text(10), "| G:SANS")
+        self.assertEqual(game.win_text(12), "|B:CLOSE")
         game.press("b")                         # close without doing anything
 
         game.menu(1)                            # COPY
@@ -232,20 +233,20 @@ class M2(unittest.TestCase):
         game.open_editor()
         self.assertEqual(game.canvas_cell(1, 2), CELL_GUIDE)   # sans 'A' row 2: .#...#..
         game.press("start")
-        for _ in range(8):
+        for _ in range(9):
             game.press("down")
         game.press("a")                                       # G:SANS -> G:SERIF, menu stays open
-        self.assertEqual(game.win_text(9), "|>G:SERIF")
+        self.assertEqual(game.win_text(10), "|>G:SERIF")
         game.press("a")
-        self.assertEqual(game.win_text(9), "|>G:8X8")
+        self.assertEqual(game.win_text(10), "|>G:8X8")
         game.press("a")
-        self.assertEqual(game.win_text(9), "|>G:OFF")
+        self.assertEqual(game.win_text(10), "|>G:OFF")
         game.press("b")
         self.assertEqual(game.canvas_cell(1, 2), CELL_OFF)
-        game.menu(8)                                          # back to SANS
+        game.menu(9)                                          # back to SANS
         game.press("b")
         self.assertEqual(game.canvas_cell(1, 2), CELL_GUIDE)
-        game.menu(8)                                          # SERIF, and keep it
+        game.menu(9)                                          # SERIF, and keep it
         game.press("b")
         game.back_to_map()
         self.assertEqual(game.text(1), "FONT 1        SERIF")

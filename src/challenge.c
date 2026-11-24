@@ -52,13 +52,16 @@ static uint8_t set_of(uint8_t code) {
     return SET_ACCENTS;
 }
 
-// Fill chal_list from the settings. Spaces (32, 160) and the soft hyphen (173) are never drawn.
+// Fill chal_list from the settings, in the design order. Spaces (32, 160) and the soft hyphen (173) are
+// never drawn.
 static void build_list(void) {
-    uint8_t i, code;
+    uint8_t k, i, code;
     chal_n = 0;
-    for (i = 0; i < GLYPH_COUNT; i++) {
+    order_build();
+    for (k = 0; k < GLYPH_COUNT - 1; k++) {   // in the design order chosen on the map
+        i = order_list[k];
         code = FIRST_CODE + i;
-        if (i == UNUSED_GLYPH || code == 32 || code == 160 || code == 173) continue;
+        if (code == 32 || code == 160 || code == 173) continue;
         if (!(sets & (1 << set_of(code)))) continue;
         if (only_undrawn && glyph_has_ink(i)) continue;
         chal_list[chal_n++] = i;
@@ -105,6 +108,8 @@ void challenge_enter(void) {
     text(2, 2, "TIME");
     for (i = 0; i < SET_COUNT; i++) text(7, row_y[1 + i], set_labels[i]);
     text(7, row_y[ROW_UNDRAWN], "ONLY UNDRAWN");
+    text(0, 15, "ORDER:");
+    text(7, 15, order_names[save_order()]);
     text(0, 16, "A:TICK  START:GO");
     text(0, 17, "B:BACK");
     draw_setup();
