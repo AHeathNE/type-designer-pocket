@@ -1,6 +1,7 @@
 #ifndef APP_H
 #define APP_H
 
+#include <gb/gb.h>   // BANKED
 #include <stdint.h>
 
 // screens; each *_update returns the next screen, or SCR_STAY
@@ -15,6 +16,7 @@
 #define SCR_COUNTDOWN 8
 #define SCR_RESULTS 9
 #define SCR_LEARN 10
+#define SCR_TITLE 11
 #define SCR_STAY 0xFF
 
 extern uint8_t current;       // glyph index being viewed or edited (code - 32)
@@ -29,26 +31,27 @@ extern uint8_t chal_seconds;  // per glyph
 
 // Design orders (order.c), chosen on the map and kept in the save header.
 #define ORDER_COUNT 4
-extern const char *const order_names[ORDER_COUNT];   // up to 8 characters
 extern uint8_t order_list[];  // the current order: every glyph index but 127's
-void order_build(void);       // (re)build order_list for the saved order
-uint8_t order_step(uint8_t i, int8_t dir);
-uint8_t order_next_undrawn(void);   // or 0xFF when everything is drawn
-uint16_t from_source(uint8_t code); // START FROM: source glyph index | turn << 8 (1 flip H, 2 flip V,
+void order_build(void) BANKED;   // (re)build order_list for the saved order
+uint8_t order_step(uint8_t i, int8_t dir) BANKED;
+uint8_t order_next_undrawn(void) BANKED;   // or 0xFF when everything is drawn
+void order_name(uint8_t x, uint8_t y, uint8_t win) BANKED;   // the saved order's name, on BG or window
+uint16_t from_source(uint8_t code) BANKED; // START FROM: source glyph index | turn << 8 (1 flip H, 2 flip V,
                                     // 3 both), or 0xFFFF
 
 extern uint8_t learn_back;    // the screen LEARN returns to
 
-void slots_enter(void);   uint8_t slots_update(void);
-void picker_enter(void);  uint8_t picker_update(void);
-void credits_enter(void); uint8_t credits_update(void);
-void map_enter(void);     uint8_t map_update(void);
-void editor_enter(void);  uint8_t editor_update(void);
-void typetest_enter(void); uint8_t typetest_update(void);
-void keyboard_enter(void); uint8_t keyboard_update(void);
-void challenge_enter(void); uint8_t challenge_update(void);
-void countdown_enter(void); uint8_t countdown_update(void);
-void results_enter(void); uint8_t results_update(void);
-void learn_enter(void);   uint8_t learn_update(void);
+void slots_enter(void) BANKED; uint8_t slots_update(void) BANKED;
+void picker_enter(void) BANKED; uint8_t picker_update(void) BANKED;
+void credits_enter(void) BANKED; uint8_t credits_update(void) BANKED;
+void map_enter(void) BANKED; uint8_t map_update(void) BANKED;
+void editor_enter(void) BANKED; uint8_t editor_update(void) BANKED;
+void typetest_enter(void) BANKED; uint8_t typetest_update(void) BANKED;
+void keyboard_enter(void) BANKED; uint8_t keyboard_update(void) BANKED;
+void challenge_enter(void) BANKED; uint8_t challenge_update(void) BANKED;
+void countdown_enter(void) BANKED; uint8_t countdown_update(void) BANKED;
+void results_enter(void) BANKED; uint8_t results_update(void) BANKED;
+void learn_enter(void) BANKED; uint8_t learn_update(void) BANKED;
+void title_enter(void) BANKED; uint8_t title_update(void) BANKED;
 
 #endif

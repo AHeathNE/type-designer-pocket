@@ -1,3 +1,4 @@
+#pragma bank 1   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // Character map: one page of the character set at a time, in a 16-wide grid in GB Studio's sheet order.
 //
 //  row 0   page title, page number
@@ -13,6 +14,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "save.h"
+#include "sound.h"
 
 #define GRID_X 2
 #define GRID_Y 3
@@ -83,21 +85,23 @@ static void menu_draw(void) {
         win_text(1, 1 + i, i == menu_sel ? ">" : " ");
         win_text(2, 1 + i, menu_labels[i]);
     }
-    win_text(8, 1 + MI_ORDER, order_names[save_order()]);   // A cycles it
+    order_name(8, 1 + MI_ORDER, 1);   // A cycles it
     win_text(2, MAP_MENU_COUNT + 1, "B:CLOSE");
 }
 
 static uint8_t menu_update(void) {
     if (pressed & (J_B | J_START)) {
+        sfx(SFX_BACK);
         menu_open = 0;
         HIDE_WIN;
         bars_show();
         draw_info();
         return SCR_STAY;
     }
-    if (moves & J_UP) { menu_sel = menu_sel ? menu_sel - 1 : MAP_MENU_COUNT - 1; menu_draw(); }
-    if (moves & J_DOWN) { menu_sel = (menu_sel + 1) % MAP_MENU_COUNT; menu_draw(); }
+    if (moves & J_UP) { menu_sel = menu_sel ? menu_sel - 1 : MAP_MENU_COUNT - 1; menu_draw(); sfx(SFX_MOVE); }
+    if (moves & J_DOWN) { menu_sel = (menu_sel + 1) % MAP_MENU_COUNT; menu_draw(); sfx(SFX_MOVE); }
     if (pressed & J_A) {
+        sfx(SFX_OK);
         if (menu_sel == MI_ORDER) {   // stays open, so you can keep cycling
             save_set_order((save_order() + 1) % ORDER_COUNT);
             menu_draw();
@@ -128,7 +132,7 @@ static uint8_t menu_update(void) {
 
 // ---- screen ----
 
-void map_enter(void) {
+void map_enter(void) BANKED {
     uint8_t i;
     if (current == UNUSED_GLYPH) current = UNUSED_GLYPH - 1;
     page = page_of(current);
@@ -156,7 +160,7 @@ static void go_page(uint8_t p, uint8_t k) {
     draw_page();
 }
 
-uint8_t map_update(void) {
+uint8_t map_update(void) BANKED {
     uint8_t k = current - page_first[page], cells = page_cells[page], was = current;
     uint8_t last_row = (cells - 1) / 16;
 
@@ -182,11 +186,15 @@ uint8_t map_update(void) {
         else go_page((page + 1) % PAGE_COUNT, k % 16);
     }
     if (pressed & J_SELECT) go_page((page + 1) % PAGE_COUNT, k);
-    if (current != was || (pressed & J_SELECT)) draw_info();
+    if (current != was || (pressed & J_SELECT)) {
+        draw_info();
+        sfx(SFX_MOVE);
+    }
 
-    if (pressed & J_A) return SCR_EDITOR;
-    if (pressed & J_B) return SCR_SLOTS;
+    if (pressed & J_A) { sfx(SFX_OK); return SCR_EDITOR; }
+    if (pressed & J_B) { sfx(SFX_BACK); return SCR_SLOTS; }
     if (pressed & J_START) {
+        sfx(SFX_OK);
         menu_open = 1;
         menu_sel = 0;
         hide_sprites();

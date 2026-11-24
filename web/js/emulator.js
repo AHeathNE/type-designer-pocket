@@ -1,10 +1,27 @@
 // The Type Designer Pocket ROM running in the browser, on binjgb (MIT, vendored in vendor/binjgb).
-// Based on binjgb's own docs/simple.js player, cut down: no audio (the game is silent so far), no rewind.
+// Based on binjgb's own docs/simple.js player, cut down: no rewind. The ROM is Game Boy Color compatible, so
+// binjgb runs it as a Color: the colours come from the game's own COLORS setting.
 
 const CPU_TICKS_PER_SECOND = 4194304;
 const MAX_STEP_SEC = 5 / 60;
 const EVENT_NEW_FRAME = 1;
+const EVENT_AUDIO_BUFFER_FULL = 2;
 const EVENT_UNTIL_TICKS = 4;
+const AUDIO_FRAMES = 4096;
+const AUDIO_LATENCY_SEC = 0.1;
+const VOLUME = 0.5;
+const CGB_COLOR_CURVE = 2;   // binjgb's approximation of a real Game Boy Color screen
+
+// One audio context for the page. Browsers keep it suspended until the visitor presses a key or taps:
+// call resumeAudio() from those handlers.
+let audioCtx = null;
+function audio() {
+  audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+export function resumeAudio() {
+  if (audioCtx && audioCtx.state !== "running") audioCtx.resume();
+}
 const BUTTONS = ["up", "down", "left", "right", "a", "b", "start", "select"];
 const SETTERS = {
   up: "_set_joyp_up", down: "_set_joyp_down", left: "_set_joyp_left", right: "_set_joyp_right",
@@ -25,7 +42,7 @@ export class Pocket {
     const size = (romBuffer.byteLength + 0x7fff) & ~0x7fff;
     this.romPtr = module._malloc(size);
     this.heap(this.romPtr, size).fill(0).set(new Uint8Array(romBuffer));
-    this.e = module._emulator_new_simple(this.romPtr, size, 44100, 4096, 2);
+    this.e = module._emulator_new_simple(this.romPtr, size, audio().sampleRate, AUDIO_FRAMES, CGB_COLOR_CURVE);
     if (!this.e) throw new Error("binjgb couldn't load the ROM");
     this.joypad = module._joypad_new();
     module._emulator_set_default_joypad_callback(this.e, this.joypad);
@@ -35,6 +52,8 @@ export class Pocket {
     this.image = this.ctx.createImageData(160, 144);
     this.frame = this.heap(module._get_frame_buffer_ptr(this.e), module._get_frame_buffer_size(this.e));
     this.held = new Set();
+    this.audioBuf = this.heap(module._get_audio_buffer_ptr(this.e), module._get_audio_buffer_capacity(this.e));
+    this.audioStart = 0;
     this.onSramChange = null;
     this.lastSec = 0;
     this.raf = requestAnimationFrame((t) => this.step(t));
@@ -49,11 +68,6 @@ export class Pocket {
     this.m._joypad_delete(this.joypad);
     this.m._emulator_delete(this.e);
     this.m._free(this.romPtr);
-  }
-
-  /** Grey (0) or a green LCD palette (one of binjgb's built-in palettes). */
-  setPalette(index) {
-    this.m._emulator_set_builtin_palette(this.e, index);
   }
 
   set(button, down) {
@@ -82,9 +96,32 @@ export class Pocket {
         this.image.data.set(this.frame);
         this.ctx.putImageData(this.image, 0, 0);
       }
+      if (event & EVENT_AUDIO_BUFFER_FULL) this.pushAudio();
       if (event & EVENT_UNTIL_TICKS) break;
     }
     if (this.m._emulator_was_ext_ram_updated(this.e) && this.onSramChange) this.onSramChange(this.getSram());
+  }
+
+  // Queue binjgb's buffer of stereo 8-bit samples to play right after the last one (as binjgb's simple.js).
+  pushAudio() {
+    const ctx = audio();
+    if (ctx.state !== "running") return;
+    if (!this.audioBuf.byteLength)
+      this.audioBuf = this.heap(this.m._get_audio_buffer_ptr(this.e), this.m._get_audio_buffer_capacity(this.e));
+    const now = ctx.currentTime;
+    this.audioStart = Math.max(this.audioStart, now + AUDIO_LATENCY_SEC);
+    if (this.audioStart > now + 4 * AUDIO_LATENCY_SEC) this.audioStart = now + AUDIO_LATENCY_SEC;   // fell behind
+    const buffer = ctx.createBuffer(2, AUDIO_FRAMES, ctx.sampleRate);
+    const left = buffer.getChannelData(0), right = buffer.getChannelData(1);
+    for (let i = 0; i < AUDIO_FRAMES; i++) {
+      left[i] = (this.audioBuf[2 * i] * VOLUME) / 255;
+      right[i] = (this.audioBuf[2 * i + 1] * VOLUME) / 255;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    src.start(this.audioStart);
+    this.audioStart += AUDIO_FRAMES / ctx.sampleRate;
   }
 
   withExtRam(cb) {

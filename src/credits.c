@@ -1,10 +1,11 @@
+#pragma bank 1   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // Credits: who made what, and under which licence.
 #include <gb/gb.h>
 #include "app.h"
 #include "gfx.h"
 #include "input.h"
 
-void credits_enter(void) {
+void credits_enter(void) BANKED {
     DISPLAY_OFF;
     gfx_clear();
     text(0, 0, "CREDITS");
@@ -23,6 +24,6 @@ void credits_enter(void) {
     DISPLAY_ON;
 }
 
-uint8_t credits_update(void) {
+uint8_t credits_update(void) BANKED {
     return (pressed & (J_A | J_B | J_START | J_SELECT)) ? SCR_SLOTS : SCR_STAY;
 }

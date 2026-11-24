@@ -19,7 +19,9 @@ typedef struct {
     uint8_t slot_count;   // 3
     uint8_t active;       // slot shown at boot
     uint8_t order;        // design order (order.c): 0 A-Z, 1 control, 2 hamburgefonstiv, 3 frequency
-    uint8_t reserved[6];
+    uint8_t mute;         // 1: sound off
+    uint8_t theme;        // colour theme on a Game Boy Color (gfx.c)
+    uint8_t reserved[4];
     uint16_t crc;         // CRC-16/CCITT-FALSE of the 14 bytes above
 } SaveHeader;             // 16 bytes
 
@@ -53,10 +55,14 @@ void save_write(void);                       // write the active slot
 uint8_t save_active(void);
 uint8_t save_order(void);
 void save_set_order(uint8_t order);          // written to the header straight away
+uint8_t save_sound(void);                    // 1: on
+void save_set_sound(uint8_t on);
+uint8_t save_theme(void);
+void save_set_theme(uint8_t theme);
 void save_select(uint8_t slot);              // make a slot active and load it into `font`
 void save_slot_info(uint8_t slot, SlotInfo *out);
-void save_reset(uint8_t template_id, const glyph_t *copy_from);  // blank the active slot, keep its name;
-                                                                 // copy_from: a template's 224 glyphs, or 0
+void save_reset(uint8_t template_id, uint8_t copy);   // blank the active slot, keep its name; copy: fill it
+                                                      // with the template's 224 glyphs
 uint8_t glyph_has_ink(uint8_t i);
 uint16_t crc16(const uint8_t *p, uint16_t n);
 

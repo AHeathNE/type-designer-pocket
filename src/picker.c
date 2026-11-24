@@ -1,3 +1,4 @@
+#pragma bank 1   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // New font: pick a guide template and whether to start empty (trace over the guide) or with a copy of it.
 //
 //  row 0        NEW FONT IN SLOT n
@@ -10,6 +11,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "save.h"
+#include "sound.h"
 
 #define GRID_X 2
 #define GRID_Y 5
@@ -27,7 +29,7 @@ static void draw_preview(void) {
     uint8_t i;
     const uint8_t *g;
     for (i = 0; i < BASIC_COUNT; i++) {
-        g = tmpl < TEMPLATE_COUNT ? template_fonts[tmpl][i] : 0;
+        g = tmpl < TEMPLATE_COUNT ? template_rows(tmpl, i) : 0;
         if (copy) tile_from(i, g, 0);
         else tile_from(i, 0, g);
     }
@@ -37,7 +39,7 @@ static void draw_hints(void) {
     text_pad(0, 17, "A:CREATE  B:CANCEL", 20);
 }
 
-void picker_enter(void) {
+void picker_enter(void) BANKED {
     SlotInfo info;
     uint8_t i;
     save_slot_info(picker_slot, &info);
@@ -60,7 +62,7 @@ void picker_enter(void) {
     DISPLAY_ON;
 }
 
-uint8_t picker_update(void) {
+uint8_t picker_update(void) BANKED {
     if (confirm) {
         if (pressed & J_B) {
             confirm = 0;
@@ -70,6 +72,7 @@ uint8_t picker_update(void) {
         if (!(pressed & J_A)) return SCR_STAY;
     } else {
         if (pressed & J_B) return SCR_SLOTS;
+        if (moves & (J_UP | J_DOWN | J_LEFT | J_RIGHT)) sfx(SFX_MOVE);
         if (moves & (J_UP | J_DOWN)) {
             row ^= 1;
             draw_choices();
@@ -95,6 +98,6 @@ uint8_t picker_update(void) {
     }
     // create it
     save_select(picker_slot);
-    save_reset(tmpl, copy && tmpl < TEMPLATE_COUNT ? template_fonts[tmpl] : 0);
+    save_reset(tmpl, copy && tmpl < TEMPLATE_COUNT);
     return SCR_MAP;
 }

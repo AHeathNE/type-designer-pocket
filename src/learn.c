@@ -1,4 +1,4 @@
-#pragma bank 1   // ROM bank 1 is always mapped (the game never switches banks): see Makefile
+#pragma bank 3   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // LEARN: short illustrated pages on the parts of a letter, how designers work, and where fonts come from.
 //
 //  row 0        title, page n/N
@@ -12,6 +12,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "save.h"
+#include "sound.h"
 
 #define LINE_CAP 1    // guide lines across the drawings: along the top of glyph row 1 (cap height),
 #define LINE_X 2      // row 2 (x-height)
@@ -107,7 +108,7 @@ static void make_tiles(void) {
 
 static void draw_letter(uint8_t k) {
     const Page *p = &pages[page];
-    const uint8_t *rows = template_fonts[p->font[k]][p->code[k] - FIRST_CODE];
+    const uint8_t *rows = template_rows(p->font[k], p->code[k] - FIRST_CODE);
     uint8_t r, b, ink, mark, tile, x0 = k ? 10 : 2, line;
     for (r = 0; r < 8; r++) {
         line = (r == 1 && (p->lines & LINE_CAP)) || (r == 2 && (p->lines & LINE_X)) ||
@@ -115,10 +116,10 @@ static void draw_letter(uint8_t k) {
         for (b = 0; b < 8; b++) {
             ink = (rows[r] >> (7 - b)) & 1;
             mark = (p->mark[k][r] >> (7 - b)) & 1;
-            if (ink) tile = mark ? TILE_MARK_INK : TILE_CANVAS + CELL_INK * 4;
-            else if (mark) tile = TILE_CANVAS + CELL_GUIDE * 4;
+            if (ink) tile = mark ? TILE_MARK_INK : (uint8_t)(TILE_CANVAS + CELL_INK * 4);
+            else if (mark) tile = (uint8_t)(TILE_CANVAS + CELL_GUIDE * 4);
             else if (line) tile = TILE_LINE;
-            else tile = TILE_CANVAS + CELL_OFF * 4;
+            else tile = (uint8_t)(TILE_CANVAS + CELL_OFF * 4);
             set_bkg_tile_xy(x0 + b, 2 + r, tile);
         }
     }
@@ -146,7 +147,7 @@ static void draw_page(void) {
     }
 }
 
-void learn_enter(void) {
+void learn_enter(void) BANKED {
     DISPLAY_OFF;
     gfx_clear();
     make_tiles();
@@ -156,9 +157,9 @@ void learn_enter(void) {
     DISPLAY_ON;
 }
 
-uint8_t learn_update(void) {
-    if (moves & J_LEFT) { page = page ? page - 1 : PAGE_COUNT_L - 1; draw_page(); }
-    if (moves & J_RIGHT) { page = (page + 1) % PAGE_COUNT_L; draw_page(); }
-    if (pressed & J_B) return learn_back;
+uint8_t learn_update(void) BANKED {
+    if (moves & J_LEFT) { page = page ? page - 1 : PAGE_COUNT_L - 1; draw_page(); sfx(SFX_MOVE); }
+    if (moves & J_RIGHT) { page = (page + 1) % PAGE_COUNT_L; draw_page(); sfx(SFX_MOVE); }
+    if (pressed & J_B) { sfx(SFX_BACK); return learn_back; }
     return SCR_STAY;
 }

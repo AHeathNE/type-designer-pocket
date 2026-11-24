@@ -1,3 +1,4 @@
+#pragma bank 1   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // Glyph editor: the 8x8 glyph blown up to 16x16 px per pixel.
 //
 //  row 0        reference char, code, width, SEL hint
@@ -23,6 +24,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "save.h"
+#include "sound.h"
 
 #define CANVAS_X 2
 #define CANVAS_Y 1
@@ -112,7 +114,13 @@ static void show_hints(void) {
 
 static void message(const char *s) {
     text_pad(0, 17, s, 20);
+    sfx(SFX_OK);
     msg_timer = MSG_FRAMES;
+}
+
+static void fail(const char *s) {   // a message for something that can't be done
+    message(s);
+    sfx(SFX_ERROR);
 }
 
 static void place_cursor(void) {
@@ -140,7 +148,7 @@ static void snapshot(void) {
 
 static void undo(void) {
     if (!undo_count) {
-        message("NOTHING TO UNDO");
+        fail("NOTHING TO UNDO");
         return;
     }
     undo_top = (undo_top - 1) & (UNDO_MAX - 1);
@@ -159,6 +167,7 @@ static void set_pix(uint8_t x, uint8_t y, uint8_t v) {
     }
     if (v) font.glyphs[current][y] |= bit;
     else font.glyphs[current][y] &= ~bit;
+    sfx(v ? SFX_INK : SFX_ERASE);
     dirty = 1;
     draw_cell(x, y);
     glyph_tile(PREVIEW_TILE, current, 0);
@@ -296,6 +305,7 @@ static void menu_draw(void) {
 }
 
 static void menu_show(void) {
+    sfx(SFX_OK);
     menu_open = 1;
     menu_sel = 0;
     hide_sprites();
@@ -312,16 +322,19 @@ static void menu_close(void) {
 
 static uint8_t menu_update(void) {
     if (pressed & (J_B | J_START)) {
+        sfx(SFX_BACK);
         menu_close();
         return SCR_STAY;
     }
     if (moves & J_UP) {
         menu_sel = menu_sel ? menu_sel - 1 : MENU_COUNT - 1;
         menu_draw();
+        sfx(SFX_MOVE);
     }
     if (moves & J_DOWN) {
         menu_sel = (menu_sel + 1 < MENU_COUNT) ? menu_sel + 1 : 0;
         menu_draw();
+        sfx(SFX_MOVE);
     }
     if (!(pressed & J_A)) return SCR_STAY;
 
@@ -336,7 +349,7 @@ static uint8_t menu_update(void) {
         break;
     case M_PASTE:
         if (!has_clip) {
-            message("NOTHING COPIED");
+            fail("NOTHING COPIED");
             break;
         }
         snapshot();
@@ -378,11 +391,11 @@ static uint8_t menu_update(void) {
         uint16_t from = from_source(FIRST_CODE + current);
         uint8_t src = (uint8_t)from;
         if (from == 0xFFFF) {
-            message("NO SOURCE FOR THIS");
+            fail("NO SOURCE FOR THIS");
             break;
         }
         if (!glyph_has_ink(src)) {
-            message("SOURCE NOT DRAWN");
+            fail("SOURCE NOT DRAWN");
             break;
         }
         snapshot();
@@ -446,6 +459,7 @@ static uint8_t chal_finish(void) {
         guide = saved_guide;
         return SCR_RESULTS;
     }
+    sfx(SFX_NEXT);
     chal_glyph_start();
     return SCR_STAY;
 }
@@ -467,6 +481,7 @@ static void pause_draw(void) {
 }
 
 static void pause_show(void) {
+    sfx(SFX_OK);
     paused_left = deadline - sys_time;
     menu_open = 1;
     menu_sel = 0;
@@ -495,7 +510,7 @@ static uint8_t pause_update(void) {
 
 // ---- screen ----
 
-void editor_enter(void) {
+void editor_enter(void) BANKED {
     uint8_t y;
     DISPLAY_OFF;
     gfx_clear();
@@ -529,7 +544,7 @@ void editor_enter(void) {
     DISPLAY_ON;
 }
 
-uint8_t editor_update(void) {
+uint8_t editor_update(void) BANKED {
     uint8_t moved = 0;
 
     if (msg_timer && --msg_timer == 0) show_hints();
@@ -540,6 +555,7 @@ uint8_t editor_update(void) {
         left = deadline - sys_time;
         if ((int16_t)left <= 0) return chal_finish();
         bar_draw(left);
+        if (left <= 180 && (left % 60) == 0) sfx(SFX_TICK);   // the last three seconds
     }
     if (menu_open) return menu_update();
     if (widthing) {

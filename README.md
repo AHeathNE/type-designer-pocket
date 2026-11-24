@@ -2,9 +2,13 @@
 
 A Game Boy game for designing pixel fonts, one 8×8 glyph at a time. Your fonts live in the cartridge's battery save. The website plays the game in your browser and turns that save into a GB Studio font or an `.otf`.
 
+**Play it: https://aheathne.github.io/type-designer-pocket/**
+
 Working title.
 
 ## Status
+
+**M7: sound, title screen, Game Boy Color.** Sound effects for drawing, menus and the challenge; a title screen with SOUND and COLORS settings; four colour themes on a Game Boy Color (grey, green, paper, night); a 64 KB ROM with real bank switching. The website plays the sound too.
 
 **M6: design orders and LEARN.** Draw in the order type designers use (n o H O first, a test word, or the most frequent letters), start a glyph from a related one (h from n, b from a mirrored d, é from e), and learn the parts of a letter and where fonts come from in 20 illustrated pages.
 
@@ -18,7 +22,16 @@ Earlier milestones: three fonts on the cartridge, each started from a template (
 
 ## Playing
 
-**Fonts screen** (at power-on). This lists the three save slots, each with its name, guide font and how many glyphs are drawn.
+**Title screen** (at power-on). START goes on to the fonts.
+
+| Setting | Does |
+| --- | --- |
+| SOUND | ON or OFF (A or Left/Right) |
+| COLORS | GREY, GREEN, PAPER or NIGHT. Only on a Game Boy Color; the original shows its four greys |
+
+Both are kept in the save.
+
+**Fonts screen.** This lists the three save slots, each with its name, guide font and how many glyphs are drawn.
 
 | Control | Does |
 | --- | --- |
@@ -153,7 +166,7 @@ Each template is a text file in `fonts/` that you can edit. It's converted to C 
 
 `web/` is a static site with no build step. `make web` copies it into `build/web` together with a freshly built ROM; serve that folder with any static server, for example `python3 -m http.server --directory build/web`.
 
-- **Play.** The ROM runs in [binjgb](https://github.com/binji/binjgb), vendored in `web/vendor/binjgb`. You can use the keyboard (arrows, X = A, Z = B, Enter = START, Shift = SELECT) or the on-screen buttons. The save is kept in the browser's local storage. **Download .sav** saves a copy, and **Load a .sav** restarts the game with one.
+- **Play.** The ROM runs in [binjgb](https://github.com/binji/binjgb), vendored in `web/vendor/binjgb`, as a Game Boy Color, so the game's COLORS setting picks the colours. You can use the keyboard (arrows, X = A, Z = B, Enter = START, Shift = SELECT) or the on-screen buttons. Sound plays through Web Audio once you press a key or tap the page (browsers don't allow it before). The save is kept in the browser's local storage. **Download .sav** saves a copy, and **Load a .sav** restarts the game with one.
 - **Your fonts.** Each slot shows its glyphs, a type-test box and a font name. The fonts come from the running game, refreshed whenever it saves, or from a `.sav` you drop in. Each slot exports as:
   - **GB Studio (.zip)**: the same PNG, JSON and how-to as `tools/sav2font.py`.
   - **.otf**: one pixel is 125 units on a 1000-unit em, with the baseline under row 6. Each character sits at its real Unicode code point, so the symbols at 128–159 come out as ← ♥ ★ and so on. Glyph placement and widths match the GB Studio export. Pixels are traced into merged outlines, and undrawn characters are left out so apps fall back to another font.
@@ -163,7 +176,7 @@ Each template is a text file in `fonts/` that you can edit. It's converted to C 
     - the zip's PNG matches `sav2font.py` byte for byte
     - the `.otf` passes the browser's font sanitizer
     - text set with the `.otf` matches the type test pixel for pixel
-- **Publishing.** `.github/workflows/website.yml` runs the tests, builds the site and deploys it to GitHub Pages on every push to `main`. To enable it, go to Settings › Pages › Source and choose "GitHub Actions".
+- **Publishing.** `.github/workflows/website.yml` runs the tests, builds the site and deploys it to GitHub Pages (https://aheathne.github.io/type-designer-pocket/) on every push to `main`.
 
 ## Exporting with the command line
 
@@ -209,6 +222,13 @@ This creates `.venv`, installs [PyBoy](https://github.com/Baekalfen/PyBoy), and 
 - load saves written by Python, including a damaged one
 - check that every template covers codes 32–255
 - check every LEARN page shows all of its text within the screen
+- check the cartridge header, the title screen settings, the sound registers and the colour themes
+
+PyBoy runs the ROM as a Game Boy Color, as its header asks. To run every test on the original Game Boy instead:
+
+```bash
+TDP_DMG=1 make test
+```
 
 Screenshots go to `build/screens/`. Ubuntu needs `python3-venv` installed first.
 
@@ -218,16 +238,28 @@ Screenshots go to `build/screens/`. Ubuntu needs `python3-venv` installed first.
 | --- | --- |
 | MBC | MBC5 + RAM + battery (type `0x1B`) |
 | Save RAM | 8 KB, one bank |
-| ROM | 32 KB: bank 0 plus bank 1, which stays mapped because the game never switches ROM banks. The templates, challenge, type test, orders and LEARN live in bank 1 (`#pragma bank 1`) |
-| Target | Original Game Boy (DMG) first |
+| ROM | 64 KB, four banks. Bank 0: main loop, input, save, graphics, sound. Bank 1: editor, map, fonts and new-font screens, credits. Bank 2: challenge, type test, design orders, title. Bank 3: the template fonts and LEARN. See the Makefile for the rules |
+| Hardware | Original Game Boy, Pocket and Color (header `0x80`: Color-compatible) |
 
-The save holds a 16-byte header (which also keeps the design order) and three font slots of 2060 bytes each. Each slot has:
+The save holds the same header bytes on every machine, so a `.sav` moves between an emulator, a flash cart and the website.
+
+The save holds a 16-byte header (which also keeps the design order, sound and colour settings) and three font slots of 2060 bytes each. Each slot has:
 - a name and the space width
 - a width setting for each glyph
 - 224 glyphs, 8 bytes each (one byte per row)
 - a CRC-16
 
 [`tools/tdpsave.py`](tools/tdpsave.py) documents every byte. [`src/save.h`](src/save.h) must stay in step with it.
+
+## Real hardware
+
+Not yet tried on a real Game Boy. The code was reviewed for the things emulators forgive:
+- all video memory is written through GBDK's routines, which wait until it's safe, and colour palettes are only written in the vertical blank
+- save RAM is enabled only while it's read or written, then disabled again, so switching off mid-game can't corrupt it
+- the joypad interrupt and every routine that switches ROM banks live in bank 0
+- sound is powered on (NR52) before any other sound register is written
+
+To try it: put `type-designer-pocket.gb` on a flash cart with battery-save support (EverDrive GB, EZ-Flash Junior and similar). The cart writes the save to its SD card as a `.sav`, which the website or `sav2font.py` reads. Some carts only write it after a reset or on the next boot.
 
 ## Toolchain notes
 
@@ -248,7 +280,9 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | `src/learn.c` | The LEARN pages: text and diagrams |
 | `src/save.c` | Battery save: format, slots, checksums, write |
 | `src/gfx.c` | Tiles, text, templates, glyph rendering, width rule, variable-width text and word wrap |
-| `src/input.c` | Joypad read in VBlank: every press is counted and handed out one per frame, so taps are never lost or merged |
+| `src/input.c` | Joypad read in VBlank: every press is queued in order and handed out one per frame, so taps are never lost, merged or reordered |
+| `src/sound.c` | Sound effects: short note sequences, stepped once a frame |
+| `src/title.c` | Title screen and the SOUND and COLORS settings |
 | `fonts/*.txt` | Starter templates as editable text art; Pocket Sans is also the UI font |
 | `tools/font2c.py` | Turns the text fonts into C at build time |
 | `tools/import_font8x8.py` | Rebuilds `fonts/classic-8x8.txt` from font8x8's headers and Pocket Sans's symbols |
@@ -271,7 +305,8 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | **M4** ✓ | Website: play in the browser, export fonts from the live game or a `.sav` (GB Studio zip and `.otf`) |
 | **M5** ✓ | Challenge mode, characters 128–255 (symbols and Latin-1) in the game, templates and exports |
 | **M6** ✓ | Design orders, START FROM, LEARN pages |
-| **M7** | Sound, title art, Game Boy Color palettes, real hardware. ROM bank 1 is nearly full, so this starts with real bank switching |
+| **M7** ✓ | Real ROM bank switching, sound, title screen, Game Boy Color themes, sound on the website |
+| **Next** | Trying it on real hardware; sending the save over the link cable; title art and a design pass |
 
 ## Licences
 

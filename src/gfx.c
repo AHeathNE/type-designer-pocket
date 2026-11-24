@@ -1,11 +1,23 @@
 #include <gb/gb.h>
+#include <gb/cgb.h>
 #include <string.h>
 #include "gfx.h"
 #include "save.h"
 
+extern const uint8_t pocket_sans[GLYPH_COUNT][8];   // all three in ROM bank FONT_BANK
 extern const uint8_t pocket_serif[GLYPH_COUNT][8];
 extern const uint8_t classic_8x8[GLYPH_COUNT][8];
-const glyph_t *const template_fonts[TEMPLATE_COUNT] = {pocket_sans, pocket_serif, classic_8x8};
+static const glyph_t *const template_fonts[TEMPLATE_COUNT] = {pocket_sans, pocket_serif, classic_8x8};
+static uint8_t rows_buf[8];
+
+// Bank 0 code, so it can map the font bank in, copy, and map the caller's bank back.
+const uint8_t *template_rows(uint8_t tmpl, uint8_t i) {
+    uint8_t was = CURRENT_BANK;
+    SWITCH_ROM(FONT_BANK);
+    memcpy(rows_buf, template_fonts[tmpl][i], 8);
+    SWITCH_ROM(was);
+    return rows_buf;
+}
 const char *const template_names[TEMPLATE_COUNT] = {"POCKET SANS", "POCKET SERIF", "CLASSIC 8X8"};
 const char *const template_short[TEMPLATE_COUNT] = {"SANS", "SERIF", "8X8"};
 
@@ -18,7 +30,7 @@ uint8_t template_next(uint8_t id) {
     return (id + 1 < TEMPLATE_COUNT) ? id + 1 : TEMPLATE_NONE;
 }
 
-const uint8_t page_first[PAGE_COUNT] = {0, 128 - FIRST_CODE, 192 - FIRST_CODE};
+const uint8_t page_first[PAGE_COUNT] = {0, 96, 160};   // codes 32, 128, 192
 const uint8_t page_cells[PAGE_COUNT] = {BASIC_COUNT, 64, 64};
 const char *const page_titles[PAGE_COUNT] = {"BASIC 32-126", "SYMBOLS 128-191", "ACCENTS 192-255"};
 
@@ -108,11 +120,42 @@ static void make_sprite_tiles(void) {
     set_sprite_data(SPR_TILE_MARK, 1, t);
 }
 
+uint8_t is_color;
+static const char *const theme_names[THEME_COUNT] = {"GREY", "GREEN", "PAPER", "NIGHT"};
+static const palette_color_t themes[THEME_COUNT][4] = {
+    {RGB8(255, 255, 255), RGB8(170, 170, 170), RGB8(85, 85, 85), RGB8(0, 0, 0)},
+    {RGB8(224, 248, 208), RGB8(136, 192, 112), RGB8(52, 104, 86), RGB8(8, 24, 32)},       // DMG green
+    {RGB8(243, 240, 230), RGB8(201, 198, 184), RGB8(107, 115, 102), RGB8(29, 35, 28)},    // the website's
+    {RGB8(16, 24, 42), RGB8(52, 80, 110), RGB8(110, 143, 176), RGB8(240, 246, 255)},      // light on dark
+};
+
+void theme_apply(void) {
+    palette_color_t spr[4];
+    const palette_color_t *t;
+    if (!is_color) return;
+    t = themes[save_theme() < THEME_COUNT ? save_theme() : 0];
+    if (LCDC_REG & LCDCF_ON) vsync();   // palette RAM can't be written while the screen is being drawn
+    set_bkg_palette(0, 1, t);
+    spr[0] = t[0];   // sprites: colour 1 is the paper (OBP0 0xE0 on the original), 2 and 3 as the BG
+    spr[1] = t[0];
+    spr[2] = t[2];
+    spr[3] = t[3];
+    set_sprite_palette(0, 1, spr);
+}
+
+void theme_name(uint8_t x, uint8_t y) {
+    text_pad(x, y, theme_names[save_theme() < THEME_COUNT ? save_theme() : 0], 6);
+}
+
 void gfx_init(void) {
+    uint8_t was = CURRENT_BANK;
+    is_color = (_cpu == CGB_TYPE);
     BGP_REG = 0xE4;                 // 0 white, 1 light, 2 dark, 3 black
     OBP0_REG = 0xE0;                // sprites: 1 white, 2 dark, 3 black
     set_1bpp_colors(3, 0);
+    SWITCH_ROM(FONT_BANK);
     set_bkg_1bpp_data(TILE_UI(32), BASIC_COUNT, (const uint8_t *)pocket_sans);
+    SWITCH_ROM(was);
     make_canvas_tiles();
     make_sprite_tiles();
     SPRITES_8x8;
@@ -189,7 +232,7 @@ void tile_from(uint8_t tile, const uint8_t *ink, const uint8_t *guide) {
 
 const uint8_t *guide_rows(uint8_t i) {
     if (font.template_id >= TEMPLATE_COUNT) return 0;
-    return template_fonts[font.template_id][i];
+    return template_rows(font.template_id, i);
 }
 
 void glyph_tile(uint8_t tile, uint8_t i, uint8_t guide) {
@@ -198,7 +241,7 @@ void glyph_tile(uint8_t tile, uint8_t i, uint8_t guide) {
 
 uint8_t ref_tile(uint8_t i, uint8_t spare) {
     if (i < BASIC_COUNT) return TILE_UI(FIRST_CODE + i);
-    set_bkg_1bpp_data(spare, 1, pocket_sans[i]);
+    set_bkg_1bpp_data(spare, 1, template_rows(0, i));
     return spare;
 }
 

@@ -1,4 +1,4 @@
-import { Pocket } from "./emulator.js";
+import { Pocket, resumeAudio } from "./emulator.js";
 import { parseSave, NotASave, drawnCount, drawnExtCount, glyphFor, layout, TEMPLATES, LINE_PX, SAVE_SIZE, GLYPHS, UNUSED, FIRST_CODE } from "./save.js";
 import { gbStudioZip, slug } from "./gbstudio.js";
 import { buildOtf } from "./otf.js";
@@ -11,13 +11,11 @@ const KEYS = {
   ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
   KeyX: "a", KeyZ: "b", Enter: "start", ShiftLeft: "select", ShiftRight: "select", Backspace: "select",
 };
-const PALETTES = [{ label: "Grey screen", index: 0 }, { label: "Green screen", index: 79 }];
 
 let pocket = null;
 let romBuffer = null;
 let source = "game";          // where the fonts panel reads from: "game" or "file"
 let fileSave = null;          // parsed save from a dropped .sav
-let paletteIdx = 0;
 const cardState = [];         // per slot: { name, text } the visitor typed
 
 // ---- saved game in this browser ----
@@ -50,7 +48,6 @@ async function startGame(sram) {
     if (pocket) pocket.stop();
     romBuffer ||= await (await fetch(ROM_URL)).arrayBuffer();
     pocket = await Pocket.start($("#screen"), romBuffer, sram);
-    pocket.setPalette(PALETTES[paletteIdx].index);
     let timer = 0;
     pocket.onSramChange = (data) => {
       clearTimeout(timer);
@@ -69,6 +66,8 @@ async function startGame(sram) {
 
 function bindControls() {
   const typing = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+  // browsers only start sound after a key press or tap on the page
+  for (const ev of ["keydown", "pointerdown"]) document.addEventListener(ev, resumeAudio, { capture: true });
   document.addEventListener("keydown", (e) => {
     if (typing(e) || !pocket || !(e.code in KEYS) || e.metaKey || e.ctrlKey || e.altKey) return;
     e.preventDefault();
@@ -108,11 +107,6 @@ function bindControls() {
     storeSram(sram);
     await startGame(sram);
     flash($("#play-msg"), `Loaded ${file.name}.`);
-  });
-  $("#btn-palette").addEventListener("click", () => {
-    paletteIdx = (paletteIdx + 1) % PALETTES.length;
-    pocket?.setPalette(PALETTES[paletteIdx].index);
-    $("#btn-palette").textContent = PALETTES[(paletteIdx + 1) % PALETTES.length].label;
   });
 }
 

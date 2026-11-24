@@ -8,7 +8,9 @@ Layout, little-endian, starting at the beginning of the 8 KB save RAM (0xA000 on
     5   slot_count   3
     6   active       slot shown at boot
     7   order        design order: 0 A-Z, 1 control (n o H O first), 2 hamburgefonstiv, 3 frequency
-    8   reserved     6 bytes, zero
+    8   mute         1: sound off
+    9   theme        colour theme on a Game Boy Color: 0 grey, 1 green, 2 paper, 3 night
+    10  reserved     4 bytes, zero
     14  crc16        CRC-16/CCITT-FALSE of bytes 0-13
 
   Slot i at 16 + i * 2064 (2060 bytes used, 4 spare)
@@ -127,6 +129,8 @@ class Save:
     active: int = 0
     header_ok: bool = True
     order: int = 0
+    mute: int = 0
+    theme: int = 0
 
 
 class NotASave(ValueError):
@@ -146,13 +150,13 @@ def parse(data):
     count = min(count, SLOT_COUNT)
     slots = [Slot.unpack(data[HEADER_SIZE + i * SLOT_STRIDE : HEADER_SIZE + i * SLOT_STRIDE + SLOT_SIZE]) for i in range(count)]
     return Save(slots=slots, active=active if active < count else 0, header_ok=crc16(data[:14]) == hcrc,
-                order=data[7])
+                order=data[7], mute=data[8], theme=data[9])
 
 
-def build(slots, active=0, order=0):
+def build(slots, active=0, order=0, mute=0, theme=0):
     """Build a full 8 KB save image from up to SLOT_COUNT slots (missing slots are blank)."""
     slots = list(slots) + [Slot(name=f"FONT {i + 1}") for i in range(len(slots), SLOT_COUNT)]
-    head = MAGIC + bytes([VERSION, SLOT_COUNT, active, order]) + bytes(6)
+    head = MAGIC + bytes([VERSION, SLOT_COUNT, active, order, mute, theme]) + bytes(4)
     out = bytearray(SAVE_SIZE)
     out[0:16] = head + struct.pack("<H", crc16(head))
     for i, s in enumerate(slots[:SLOT_COUNT]):

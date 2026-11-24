@@ -1,4 +1,5 @@
 """Shared helpers: a Type Designer Pocket cartridge running headless in PyBoy, driven by buttons."""
+import os
 import sys
 from pathlib import Path
 
@@ -44,11 +45,22 @@ def glyph_index(ch):
 
 
 class Game:
-    """A powered-on cartridge. Boots to the fonts screen."""
+    """A powered-on cartridge, past the title screen."""
 
-    def __init__(self, rom):
-        self.gb = PyBoy(str(rom), window="null", sound_emulated=False)
-        self.wait_fonts()
+    def __init__(self, rom, title=False, cgb=None, sound=False):
+        """Boots past the title screen to the fonts screen (title=True: stop at the title screen).
+
+        cgb: True for a Game Boy Color, False for the original. By default the ROM's header decides (it's
+        Color-compatible, so a Color), unless TDP_DMG=1 is set to run the whole suite on the original.
+        """
+        if cgb is None and os.environ.get("TDP_DMG") == "1":
+            cgb = False
+        # sound=True emulates the APU, so its registers can be read back (slower; off by default)
+        self.gb = PyBoy(str(rom), window="null", sound_emulated=sound, cgb=cgb)
+        self.wait_title()
+        if not title:
+            self.press("start")
+            self.wait_fonts()
 
     # ---- time and buttons ----
 
@@ -97,6 +109,9 @@ class Game:
         self.release(held)
 
     # ---- screens ----
+
+    def wait_title(self):
+        self.wait_for(lambda: self.text(12) == "    PRESS START", "the title screen")
 
     def wait_fonts(self):
         self.wait_for(lambda: self.text(13) == " A:OPEN", "the fonts screen")

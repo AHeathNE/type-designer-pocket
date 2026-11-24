@@ -1,3 +1,4 @@
+#pragma bank 2   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // Challenge mode, like the web Type Making Game: pick the time per glyph and which characters, count down
 // 3-2-1-GO, then draw each glyph before its timer runs out (the editor runs the timer: see editor.c).
 //
@@ -15,13 +16,13 @@
 //  rows 3-13    the challenge's glyphs, 16 to a row (more than 96: SELECT pages through them)
 //  row 15       selected: reference char, your glyph, code
 //  rows 16-17   hints
-#pragma bank 1   // ROM bank 1 is always mapped (the game never switches banks): see Makefile
 #include <gb/gb.h>
 #include <string.h>
 #include "app.h"
 #include "gfx.h"
 #include "input.h"
 #include "save.h"
+#include "sound.h"
 
 uint8_t chal_on, chal_retry;
 uint8_t chal_list[GLYPH_COUNT];
@@ -98,7 +99,7 @@ static void draw_setup(void) {
     draw_count();
 }
 
-void challenge_enter(void) {
+void challenge_enter(void) BANKED {
     uint8_t i;
     chal_on = 0;
     chal_retry = 0;
@@ -109,7 +110,7 @@ void challenge_enter(void) {
     for (i = 0; i < SET_COUNT; i++) text(7, row_y[1 + i], set_labels[i]);
     text(7, row_y[ROW_UNDRAWN], "ONLY UNDRAWN");
     text(0, 15, "ORDER:");
-    text(7, 15, order_names[save_order()]);
+    order_name(7, 15, 0);
     text(0, 16, "A:TICK  START:GO");
     text(0, 17, "B:BACK");
     draw_setup();
@@ -117,7 +118,7 @@ void challenge_enter(void) {
     DISPLAY_ON;
 }
 
-uint8_t challenge_update(void) {
+uint8_t challenge_update(void) BANKED {
     uint8_t changed = 0;
     if (pressed & J_B) return SCR_MAP;
     if (moves & J_UP) { row = row ? row - 1 : ROWS - 1; changed = 1; }
@@ -131,9 +132,17 @@ uint8_t challenge_update(void) {
         else sets ^= 1 << (row - 1);
         changed = 1;
     }
-    if (changed) draw_setup();
+    if (changed) {
+        draw_setup();
+        sfx(SFX_MOVE);
+    }
+    if (pressed & J_B) sfx(SFX_BACK);
     if (pressed & J_START) {
-        if (!chal_n) return SCR_STAY;   // "NOTHING TO DRAW" is already showing
+        if (!chal_n) {                  // "NOTHING TO DRAW" is already showing
+            sfx(SFX_ERROR);
+            return SCR_STAY;
+        }
+        sfx(SFX_OK);
         chal_seconds = time_options[time_idx];
         chal_pos = 0;
         return SCR_COUNTDOWN;
@@ -148,7 +157,7 @@ static uint16_t step_start;
 
 // one Pocket Sans character with each pixel a tile, its 8x8 box at (x, y)
 static void big_char(uint8_t c, uint8_t x, uint8_t y) {
-    const uint8_t *rows = pocket_sans[c - FIRST_CODE];
+    const uint8_t *rows = template_rows(0, c - FIRST_CODE);
     uint8_t r, b;
     for (r = 0; r < 8; r++)
         for (b = 0; b < 8; b++)
@@ -165,7 +174,7 @@ static void draw_step(void) {
     }
 }
 
-void countdown_enter(void) {
+void countdown_enter(void) BANKED {
     char buf[21], *p;
     DISPLAY_OFF;
     gfx_clear();
@@ -179,11 +188,12 @@ void countdown_enter(void) {
     step = 0;
     step_start = sys_time;
     draw_step();
+    sfx(SFX_COUNT);
     SHOW_BKG;
     DISPLAY_ON;
 }
 
-uint8_t countdown_update(void) {
+uint8_t countdown_update(void) BANKED {
     if (pressed & J_B) return SCR_CHALLENGE;
     if ((uint16_t)(sys_time - step_start) < 60) return SCR_STAY;
     step_start += 60;
@@ -193,6 +203,7 @@ uint8_t countdown_update(void) {
         return SCR_EDITOR;
     }
     draw_step();
+    sfx(step < 3 ? SFX_COUNT : SFX_GO);
     return SCR_STAY;
 }
 
@@ -223,7 +234,7 @@ static void draw_pick(void) {
     bars_place(GRID_X, GRID_Y, sel - rpage * PAGE);
 }
 
-void results_enter(void) {
+void results_enter(void) BANKED {
     uint8_t k, drawn = 0;
     if (chal_retry) sel = chal_pos - 1;
     else sel = 0;
@@ -246,9 +257,10 @@ void results_enter(void) {
     SHOW_BKG;
     SHOW_SPRITES;
     DISPLAY_ON;
+    sfx(SFX_DONE);
 }
 
-uint8_t results_update(void) {
+uint8_t results_update(void) BANKED {
     uint8_t was = sel, page_was = rpage;
     if ((moves & J_LEFT) && sel) sel--;
     if ((moves & J_RIGHT) && sel + 1 < chal_n) sel++;
@@ -260,7 +272,10 @@ uint8_t results_update(void) {
     }
     rpage = sel / PAGE;
     if (rpage != page_was) draw_results_page();
-    if (sel != was || rpage != page_was) draw_pick();
+    if (sel != was || rpage != page_was) {
+        draw_pick();
+        sfx(SFX_MOVE);
+    }
     if (pressed & J_A) {   // redo this one glyph, timed, then come back here
         chal_pos = sel;
         chal_on = 1;

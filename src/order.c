@@ -1,4 +1,4 @@
-#pragma bank 1   // ROM bank 1 is always mapped (the game never switches banks): see Makefile
+#pragma bank 2   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // Design orders: the sequence the editor's SELECT + Left/Right, the map's NEXT GLYPH and the challenge
 // follow. Each order lists some characters first; everything else follows in code order.
 #include <gb/gb.h>
@@ -7,7 +7,12 @@
 #include "gfx.h"
 #include "save.h"
 
-const char *const order_names[ORDER_COUNT] = {"A-Z", "CONTROL", "HAMBURG", "FREQUENT"};
+static const char *const order_names[ORDER_COUNT] = {"A-Z", "CONTROL", "HAMBURG", "FREQUENT"};
+
+void order_name(uint8_t x, uint8_t y, uint8_t win) BANKED {
+    if (win) win_text(x, y, order_names[save_order()]);
+    else text_pad(x, y, order_names[save_order()], 8);
+}
 static const char *const order_first[ORDER_COUNT] = {
     "",
     // n and o set the stems, spacing and curves, then H and O for capitals; then each family:
@@ -22,7 +27,7 @@ static const char *const order_first[ORDER_COUNT] = {
 uint8_t order_list[GLYPH_COUNT - 1];   // glyph indexes, every one but 127
 static uint8_t built = 0xFF;
 
-void order_build(void) {
+void order_build(void) BANKED {
     uint8_t seen[GLYPH_COUNT / 8], n = 0, i;
     const char *p;
     if (built == save_order()) return;
@@ -40,7 +45,7 @@ void order_build(void) {
     }
 }
 
-uint8_t order_step(uint8_t i, int8_t dir) {
+uint8_t order_step(uint8_t i, int8_t dir) BANKED {
     uint8_t k;
     order_build();
     for (k = 0; order_list[k] != i; k++) {}
@@ -50,7 +55,7 @@ uint8_t order_step(uint8_t i, int8_t dir) {
 }
 
 // The first glyph in the order that isn't drawn yet (spaces and the soft hyphen don't count), or 0xFF.
-uint8_t order_next_undrawn(void) {
+uint8_t order_next_undrawn(void) BANKED {
     uint8_t k, i, code;
     order_build();
     for (k = 0; k < GLYPH_COUNT - 1; k++) {
@@ -102,7 +107,7 @@ static const uint8_t accent_blocks[][3] = {
 };
 
 // The glyph index to start `code` from, with its FROM_* turn in the high byte, or 0xFFFF for none.
-uint16_t from_source(uint8_t code) {
+uint16_t from_source(uint8_t code) BANKED {
     uint8_t k;
     for (k = 0; k < sizeof accent_blocks / 3; k++)
         if (code >= accent_blocks[k][0] && code <= accent_blocks[k][1])

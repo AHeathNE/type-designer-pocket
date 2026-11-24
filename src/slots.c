@@ -1,3 +1,4 @@
+#pragma bank 1   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // Fonts screen (shown at boot): the three save slots.
 //
 //  row 0        TYPE DESIGNER POCKET
@@ -9,6 +10,7 @@
 #include "gfx.h"
 #include "input.h"
 #include "save.h"
+#include "sound.h"
 
 static uint8_t sel = 0xFF;
 
@@ -17,7 +19,7 @@ static void draw_cursor(void) {
     for (i = 0; i < SLOT_COUNT; i++) set_bkg_tile_xy(0, 3 + i * 3, i == sel ? TILE_UI('>') : TILE_BLANK);
 }
 
-void slots_enter(void) {
+void slots_enter(void) BANKED {
     SlotInfo info;
     uint8_t i, y;
     if (sel == 0xFF) sel = save_active();
@@ -45,9 +47,10 @@ void slots_enter(void) {
     DISPLAY_ON;
 }
 
-uint8_t slots_update(void) {
-    if ((moves & J_UP) && sel > 0) { sel--; draw_cursor(); }
-    if ((moves & J_DOWN) && sel + 1 < SLOT_COUNT) { sel++; draw_cursor(); }
+uint8_t slots_update(void) BANKED {
+    if ((moves & J_UP) && sel > 0) { sel--; draw_cursor(); sfx(SFX_MOVE); }
+    if ((moves & J_DOWN) && sel + 1 < SLOT_COUNT) { sel++; draw_cursor(); sfx(SFX_MOVE); }
+    if (pressed & (J_A | J_START | J_SELECT | J_B)) sfx(SFX_OK);
     if (pressed & J_A) {
         save_select(sel);
         return SCR_MAP;

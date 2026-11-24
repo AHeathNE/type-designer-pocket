@@ -1,3 +1,4 @@
+#pragma bank 2   // a BANKED screen or helper: see "ROM banks" in the Makefile
 // Type test: sample text set in the font being made, exactly as GB Studio will set it.
 //
 //  row 0        TYPE TEST       <n/7>
@@ -11,13 +12,13 @@
 //  rows 6-16    one page of the character set in Pocket Sans (every other row), bars above and below the
 //               pick; moving off the top or bottom row turns the page (codes 128-255 use tiles 40-103)
 //  row 17       length, page
-#pragma bank 1   // ROM bank 1 is always mapped (the game never switches banks): see Makefile
 #include <gb/gb.h>
 #include <string.h>
 #include "app.h"
 #include "gfx.h"
 #include "input.h"
 #include "save.h"
+#include "sound.h"
 
 #define SAMPLE_COUNT 7
 #define CUSTOM_MAX 40
@@ -81,7 +82,7 @@ static void draw_sample(void) {
     draw_missing();
 }
 
-void typetest_enter(void) {
+void typetest_enter(void) BANKED {
     DISPLAY_OFF;
     gfx_clear();
     text(0, 0, "TYPE TEST");
@@ -93,9 +94,9 @@ void typetest_enter(void) {
     DISPLAY_ON;
 }
 
-uint8_t typetest_update(void) {
-    if (moves & J_LEFT) { sample = sample ? sample - 1 : SAMPLE_COUNT - 1; draw_sample(); }
-    if (moves & J_RIGHT) { sample = (sample + 1) % SAMPLE_COUNT; draw_sample(); }
+uint8_t typetest_update(void) BANKED {
+    if (moves & J_LEFT) { sample = sample ? sample - 1 : SAMPLE_COUNT - 1; draw_sample(); sfx(SFX_MOVE); }
+    if (moves & J_RIGHT) { sample = (sample + 1) % SAMPLE_COUNT; draw_sample(); sfx(SFX_MOVE); }
     if (pressed & J_A) return SCR_KEYBOARD;
     if (pressed & J_B) return SCR_MAP;
     return SCR_STAY;
@@ -121,7 +122,7 @@ static void draw_keys(void) {
     text(7, 17, "/3");
 }
 
-void keyboard_enter(void) {
+void keyboard_enter(void) BANKED {
     DISPLAY_OFF;
     gfx_clear();
     text(0, 0, "A:ADD B:DEL ST:DONE");
@@ -141,7 +142,7 @@ static void key_page(int8_t dir, uint8_t k) {
     draw_keys();
 }
 
-uint8_t keyboard_update(void) {
+uint8_t keyboard_update(void) BANKED {
     uint8_t was = key, page_was = kpage, cells = page_cells[kpage];
     if ((moves & J_LEFT) && key > 0) key--;
     if ((moves & J_RIGHT) && key + 1 < cells) key++;
@@ -153,15 +154,20 @@ uint8_t keyboard_update(void) {
         if (key / 16 < (cells - 1) / 16) key = key + 16 < cells ? key + 16 : cells - 1;
         else key_page(1, key % 16);
     }
-    if (key != was || kpage != page_was) bars_place(KEY_X, KEY_Y, key);
+    if (key != was || kpage != page_was) {
+        bars_place(KEY_X, KEY_Y, key);
+        sfx(SFX_MOVE);
+    }
     if ((pressed & (J_A | J_SELECT)) && custom_len < CUSTOM_MAX) {
         custom[custom_len++] = (pressed & J_SELECT) ? ' ' : (char)(FIRST_CODE + page_first[kpage] + key);
         custom[custom_len] = 0;
         draw_typed();
+        sfx(SFX_INK);
     }
     if ((pressed & J_B) && custom_len) {
         custom[--custom_len] = 0;
         draw_typed();
+        sfx(SFX_ERASE);
     }
     if (pressed & J_START) {
         sample = SAMPLE_COUNT - 1;

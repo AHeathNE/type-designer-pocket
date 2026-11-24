@@ -34,8 +34,8 @@
 // Starter templates, in template_id order (the id stored in each save slot)
 #define TEMPLATE_COUNT 3
 #define TEMPLATE_NONE 0xFF
-extern const uint8_t pocket_sans[GLYPH_COUNT][8];   // in ROM bank 1, which stays mapped
-extern const glyph_t *const template_fonts[TEMPLATE_COUNT];
+#define FONT_BANK 3   // the template fonts (build/gen/fonts.c); read them only through template_rows()
+const uint8_t *template_rows(uint8_t tmpl, uint8_t i);    // a copy of template tmpl's glyph i (8 rows)
 extern const char *const template_names[TEMPLATE_COUNT];   // up to 12 characters
 extern const char *const template_short[TEMPLATE_COUNT];   // up to 5 characters
 const char *template_name(uint8_t id);                     // "NO GUIDE" for TEMPLATE_NONE
@@ -52,6 +52,13 @@ extern const char *const page_titles[PAGE_COUNT];
 uint8_t page_of(uint8_t i);
 uint8_t glyph_step(uint8_t i, int8_t dir);       // next/previous glyph index, skipping 127, wrapping
 uint8_t other_case(uint8_t code);                // the same letter in the other case (ASCII, Latin-1), or 0
+
+// Colour themes, on a Game Boy Color (on the original they're the four greys). Colour 0 is the paper,
+// 1 the guide, 2 grid lines, 3 ink.
+#define THEME_COUNT 4
+extern uint8_t is_color;                          // running on a Game Boy Color
+void theme_apply(void);                           // the saved theme's palettes
+void theme_name(uint8_t x, uint8_t y);            // its name, padded to 6
 
 void gfx_init(void);
 void gfx_clear(void);

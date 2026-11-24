@@ -4,6 +4,7 @@
 #include <gb/gb.h>
 #include <string.h>
 #include "save.h"
+#include "gfx.h"   // template_rows
 
 #define SRAM ((uint8_t *)0xA000)
 #define SLOT_STRIDE 2064u
@@ -144,12 +145,34 @@ uint8_t save_order(void) {
     return header.order < 4 ? header.order : 0;
 }
 
-void save_set_order(uint8_t order) {
-    header.order = order;
+static void header_changed(void) {
     ENABLE_RAM;
     SWITCH_RAM(0);
     write_header();
     DISABLE_RAM;
+}
+
+void save_set_order(uint8_t order) {
+    header.order = order;
+    header_changed();
+}
+
+uint8_t save_sound(void) {
+    return !header.mute;
+}
+
+void save_set_sound(uint8_t on) {
+    header.mute = !on;
+    header_changed();
+}
+
+uint8_t save_theme(void) {
+    return header.theme;
+}
+
+void save_set_theme(uint8_t theme) {
+    header.theme = theme;
+    header_changed();
 }
 
 void save_select(uint8_t slot) {
@@ -184,12 +207,14 @@ void save_slot_info(uint8_t slot, SlotInfo *out) {
     out->ok = slot_ok[slot];
 }
 
-void save_reset(uint8_t template_id, const glyph_t *copy_from) {
+void save_reset(uint8_t template_id, uint8_t copy) {
+    uint8_t i;
     char name[12];
     memcpy(name, font.name, 12);
     blank_font(header.active);
     memcpy(font.name, name, 12);
     font.template_id = template_id;
-    if (copy_from) memcpy(font.glyphs, copy_from, sizeof font.glyphs);
+    if (copy)
+        for (i = 0; i < GLYPH_COUNT; i++) memcpy(font.glyphs[i], template_rows(template_id, i), 8);
     save_write();
 }
