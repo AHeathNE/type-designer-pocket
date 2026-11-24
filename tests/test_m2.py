@@ -97,7 +97,7 @@ class M2(unittest.TestCase):
         game.press("a")
         game.wait_map()
         self.assertEqual(game.text(1), "FONT 2        SERIF")
-        self.assertIn("DRAWN 94/95", game.text(16))   # every glyph but the space
+        self.assertEqual(game.text(16), "DRAWN 94/95  B:FONTS")   # every glyph but the space, clear of the hint
         game.power_off()
         save = self.saved()
         slot = save.slots[1]

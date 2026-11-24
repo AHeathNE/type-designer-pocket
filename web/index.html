@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Type Designer Pocket</title>
+  <meta name="description" content="Design pixel fonts on a Game Boy, then export them for GB Studio or as an .otf.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Type Designer Pocket</h1>
+    <p>Design a pixel font one 8×8 glyph at a time on a Game Boy, then export it for GB Studio or as an <code>.otf</code>.</p>
+  </header>
+
+  <main>
+    <section id="play" aria-label="The game">
+      <div class="console">
+        <div class="screen-wrap">
+          <canvas id="screen" width="160" height="144" aria-label="Game screen"></canvas>
+          <p id="screen-msg">Loading the game…</p>
+        </div>
+        <div class="pad" aria-label="On-screen buttons">
+          <div class="dpad">
+            <button data-btn="up" class="up" aria-label="Up">▲</button>
+            <button data-btn="left" class="left" aria-label="Left">◀</button>
+            <button data-btn="right" class="right" aria-label="Right">▶</button>
+            <button data-btn="down" class="down" aria-label="Down">▼</button>
+          </div>
+          <div class="ab">
+            <button data-btn="b" class="b">B</button>
+            <button data-btn="a" class="a">A</button>
+          </div>
+          <div class="ss">
+            <button data-btn="select">SELECT</button>
+            <button data-btn="start">START</button>
+          </div>
+        </div>
+      </div>
+      <p class="keys">Keyboard: <kbd>←↑→↓</kbd> move · <kbd>X</kbd> A · <kbd>Z</kbd> B · <kbd>Enter</kbd> START · <kbd>Shift</kbd> SELECT</p>
+      <div class="row">
+        <button id="btn-download-sav" class="btn">Download .sav</button>
+        <label class="btn">Load a .sav<input type="file" id="file-load-sav" accept=".sav,.ram,.srm,application/octet-stream" hidden></label>
+        <button id="btn-palette" class="btn">Green screen</button>
+      </div>
+      <p id="play-msg" class="msg" hidden></p>
+      <p class="note">Your fonts are kept in this browser as you play. Download the <code>.sav</code> to keep a copy, or to play it in another emulator or on a flash cart.</p>
+    </section>
+
+    <section id="fonts" aria-labelledby="fonts-h">
+      <h2 id="fonts-h">Your fonts</h2>
+      <div class="source" role="radiogroup" aria-label="Read fonts from">
+        <label><input type="radio" name="source" value="game" checked> From the game</label>
+        <label><input type="radio" name="source" value="file"> From a .sav file</label>
+      </div>
+      <label id="drop" class="drop" hidden>
+        <input type="file" id="file-open-sav" accept=".sav,.ram,.srm,application/octet-stream" hidden>
+        <strong>Choose a .sav</strong> or drop one here
+        <span>From mGBA, SameBoy and most emulators, or a cartridge dump</span>
+      </label>
+      <p id="fonts-msg" class="msg" hidden></p>
+      <div id="slots"></div>
+    </section>
+
+    <section id="gbstudio" aria-labelledby="gbs-h">
+      <h2 id="gbs-h">Using a font in GB Studio</h2>
+      <ol>
+        <li>Press <strong>GB Studio (.zip)</strong> on a font above and unzip it.</li>
+        <li>Copy the <code>.png</code> and <code>.json</code> into your project's <code>assets/fonts</code> folder.</li>
+        <li>In GB Studio, open <strong>Settings › UI Elements</strong> and pick it as the default font, or switch to it with the <strong>Set Font</strong> event.</li>
+      </ol>
+      <p>Letters you only drew in one case are used for both. The type test on each font shows what GB Studio will show: the same widths and the same line breaks.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Type Designer Pocket by AHeathNE. Code MIT · Pocket Sans and Pocket Serif OFL 1.1 · Classic 8×8 from font8x8 by Daniel Hepper, public domain.</p>
+    <p>Runs on <a href="https://github.com/binji/binjgb">binjgb</a> by Ben Smith (MIT). <code>.otf</code> files are built with <a href="https://github.com/opentypejs/opentype.js">opentype.js</a> (MIT). Made with <a href="https://github.com/gbdk-2020/gbdk-2020">GBDK-2020</a>.</p>
+    <p><a href="https://github.com/AHeathNE/type-designer-pocket">Source on GitHub</a></p>
+  </footer>
+
+  <template id="slot-card">
+    <article class="slot">
+      <header>
+        <h3 class="slot-title"></h3>
+        <p class="slot-meta"></p>
+        <p class="slot-bad" hidden>This font failed its checksum. The save may be damaged, so check it before you use it.</p>
+      </header>
+      <canvas class="grid" aria-label="All 95 characters"></canvas>
+      <label class="field">Type test
+        <input class="sample" type="text" maxlength="200" spellcheck="false">
+      </label>
+      <canvas class="test" aria-label="Type test"></canvas>
+      <div class="export">
+        <label class="field">Font name
+          <input class="name" type="text" maxlength="40" spellcheck="false">
+        </label>
+        <button class="btn primary export-gbs">GB Studio (.zip)</button>
+        <button class="btn export-otf">.otf</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="vendor/binjgb/binjgb.js"></script>
+  <script src="vendor/opentype.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

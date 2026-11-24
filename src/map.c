@@ -35,9 +35,9 @@ static void draw_count(void) {
     uint8_t i, n = 0;
     for (i = 0; i < EDIT_COUNT; i++)
         if (glyph_has_ink(i)) n++;
-    text(2, 16, "DRAWN");
-    text_num(8, 16, n);
-    text(n >= 10 ? 10 : 9, 16, "/95");
+    text(0, 16, "DRAWN");      // columns 0-10 at most ("DRAWN 95/95"), clear of "B:FONTS" at 13
+    text_num(6, 16, n);
+    text(n >= 10 ? 8 : 7, 16, "/95");
 }
 
 void map_enter(void) {

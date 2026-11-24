@@ -1,6 +1,7 @@
 # Type Designer Pocket
 # make        build the ROM into build/
 # make test   build, then run the headless PyBoy tests
+# make web    the website, with the ROM, in build/web (serve that folder)
 # make clean
 
 GBDK   ?= vendor/gbdk
@@ -35,7 +36,12 @@ $(PY):
 test: $(ROM) | $(PY)
 	$(PY) -m unittest discover -s tests -v
 
+web: $(ROM)
+	rm -rf build/web
+	cp -r web build/web
+	cp $(ROM) build/web/
+
 clean:
 	rm -rf build
 
-.PHONY: all test clean
+.PHONY: all test web clean

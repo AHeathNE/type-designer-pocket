@@ -1,10 +1,12 @@
 # Type Designer Pocket
 
-A Game Boy game for designing pixel fonts, one 8×8 glyph at a time. Your fonts live in the cartridge's battery save, and a companion tool turns that save into a GB Studio font.
+A Game Boy game for designing pixel fonts, one 8×8 glyph at a time. Your fonts live in the cartridge's battery save. The website plays the game in your browser and turns that save into a GB Studio font or an `.otf`.
 
-Working title. Sister project to the web [Type Making Game](https://github.com/AHeathNE/type-making-game).
+Working title.
 
 ## Status
+
+**M4: the website.** Play in the browser, and export your fonts as a GB Studio zip or an `.otf`, straight from the running game or from any `.sav`.
 
 **M3: type test and widths.** The type test sets sample text, or your own, in your font exactly as GB Studio will, with variable width and word wrap. Each glyph can have a fixed width, and the space's width sets the word spacing.
 
@@ -90,7 +92,23 @@ If a save fails its checksum, the fonts screen and the map show **SAVE CHECK!**.
 
 Each template is a text file in `fonts/` that you can edit. It's converted to C at build time, and `fonts/LICENSES.md` records where each one came from.
 
-## Exporting to GB Studio
+## Website
+
+`web/` is a static site with no build step. `make web` copies it into `build/web` together with a freshly built ROM; serve that folder with any static server, for example `python3 -m http.server --directory build/web`.
+
+- **Play.** The ROM runs in [binjgb](https://github.com/binji/binjgb), vendored in `web/vendor/binjgb`. You can use the keyboard (arrows, X = A, Z = B, Enter = START, Shift = SELECT) or the on-screen buttons. The save is kept in the browser's local storage. **Download .sav** saves a copy, and **Load a .sav** restarts the game with one.
+- **Your fonts.** Each slot shows its glyphs, a type-test box and a font name. The fonts come from the running game, refreshed whenever it saves, or from a `.sav` you drop in. Each slot exports as:
+  - **GB Studio (.zip)**: the same PNG, JSON and how-to as `tools/sav2font.py`.
+  - **.otf**: one pixel is 125 units on a 1000-unit em, with the baseline under row 6. Glyph placement and widths match the GB Studio export. Pixels are traced into merged outlines, and undrawn characters are left out so apps fall back to another font.
+- **Checks.**
+  - `tests/test_web.py` runs `web/js/save.js` and `otf.js` under Node and compares every glyph, width, outline area and line break with the Python tools.
+  - In a browser, I checked that:
+    - the zip's PNG matches `sav2font.py` byte for byte
+    - the `.otf` passes the browser's font sanitizer
+    - text set with the `.otf` matches the type test pixel for pixel
+- **Publishing.** `.github/workflows/website.yml` runs the tests, builds the site and deploys it to GitHub Pages on every push to `main`. To enable it, go to Settings › Pages › Source and choose "GitHub Actions".
+
+## Exporting with the command line
 
 Emulators keep the cartridge save next to the ROM, as `type-designer-pocket.sav` (mGBA, SameBoy) or `.gb.ram` (PyBoy). A cartridge dumped with a flash cart or cart reader gives you the same bytes.
 
@@ -174,7 +192,10 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | `tools/tdpsave.py` | Save format (read and write) |
 | `tools/sav2font.py` | Save → GB Studio font |
 | `tools/get-gbdk.sh` | Downloads the pinned GBDK-2020 toolchain |
-| `tests/` | Headless PyBoy tests |
+| `tests/` | Headless PyBoy tests, plus a Node check of the website's JavaScript |
+| `web/` | The website: player, font previews, GB Studio and `.otf` export |
+| `web/vendor/` | binjgb (emulator, MIT) and opentype.js (MIT), with their licences |
+| `.github/workflows/website.yml` | Test, build and publish the website to GitHub Pages |
 
 ## Roadmap
 
@@ -184,7 +205,7 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | **M1** ✓ | Character map and editor for the 95 ASCII glyphs, one save slot with a checksum, `.sav` to GB Studio font |
 | **M2** ✓ | Templates shown as a ghost under your pixels, three slots, copy/paste/flip/nudge/undo, credits |
 | **M3** ✓ | Type test screen with variable width, per-glyph and space widths |
-| **M4** | Web import page (GB Studio zip and `.otf`), then playing in the browser |
+| **M4** ✓ | Website: play in the browser, export fonts from the live game or a `.sav` (GB Studio zip and `.otf`) |
 | **M5** | Challenge mode, characters 128–255 |
 | **M6** | Sound, title art, Game Boy Color palettes, real hardware |
 
@@ -193,3 +214,4 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 - **Code:** [MIT](LICENSE).
 - **Fonts:** Pocket Sans and Pocket Serif are under the [SIL Open Font License 1.1](fonts/OFL.txt). Classic 8×8 is public domain. See [`fonts/LICENSES.md`](fonts/LICENSES.md).
 - **Toolchain:** GBDK-2020's runtime library is GPLv2 with a linking exception, so ROMs built with it can use any licence.
+- **Website:** binjgb by Ben Smith and opentype.js by Frederik De Bleser, both MIT; their licences are in `web/vendor/`.
