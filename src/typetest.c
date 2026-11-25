@@ -6,7 +6,7 @@
 //  row 14       characters the sample needs that aren't drawn yet (tiles 108-115 for codes 128-255)
 //  rows 16-17   hints
 //
-// Keyboard: type your own sample.
+// Keyboard: type your own sample, or (from the map's RENAME) the font's name.
 //  row 0        hints
 //  rows 2, 4    your text so far, set in your font (tiles 0-35)
 //  rows 6-16    one page of the character set in Pocket Sans (every other row), bars above and below the
@@ -106,8 +106,21 @@ uint8_t typetest_update(void) BANKED {
 
 #define KEY_X 2
 #define KEY_Y 6
+#define NAME_MAX 12
+
+static uint8_t naming;        // the keyboard is naming the font (ASCII only, page 1), not writing a sample
+static char name[NAME_MAX + 1];
+static uint8_t name_len;
 
 static void draw_typed(void) {
+    if (naming) {             // the name in the game's own lettering, as the fonts screen shows it
+        text(0, 2, "NAME:");
+        text_pad(6, 2, name, NAME_MAX);
+        if (name_len < NAME_MAX) set_bkg_tile_xy(6 + name_len, 2, TILE_UI('_'));
+        text_num(0, 17, name_len);
+        text(name_len >= 10 ? 2 : 1, 17, "/12 ");
+        return;
+    }
     text_block(custom, custom_len, 1, 2, 2, 0);
     text_num(0, 17, custom_len);
     text(custom_len >= 10 ? 2 : 1, 17, "/40 ");
@@ -118,14 +131,15 @@ static void draw_keys(void) {
     fill_bkg_rect(KEY_X, KEY_Y, 16, 11, TILE_BLANK);
     for (k = 0; k < cells; k++)
         set_bkg_tile_xy(KEY_X + k % 16, KEY_Y + 2 * (k / 16), ref_tile(page_first[kpage] + k, 40 + k));
+    if (naming) return;
     set_bkg_tile_xy(6, 17, TILE_UI('1' + kpage));
     text(7, 17, "/3");
 }
 
-void keyboard_enter(void) BANKED {
+static void keyboard_open(void) {
     DISPLAY_OFF;
     gfx_clear();
-    text(0, 0, "A:ADD B:DEL ST:DONE");
+    text(0, 0, naming ? "A:ADD B:DEL ST:SAVE" : "A:ADD B:DEL ST:DONE");
     text(11, 17, "SEL:SPACE");
     draw_keys();
     draw_typed();
@@ -134,6 +148,21 @@ void keyboard_enter(void) BANKED {
     SHOW_BKG;
     SHOW_SPRITES;
     DISPLAY_ON;
+}
+
+void keyboard_enter(void) BANKED {
+    naming = 0;
+    keyboard_open();
+}
+
+void rename_enter(void) BANKED {
+    naming = 1;
+    kpage = 0;   // names are ASCII: the fonts screen shows them in Pocket Sans
+    if (key >= BASIC_COUNT) key = 'A' - FIRST_CODE;
+    for (name_len = 0; name_len < NAME_MAX && font.name[name_len]; name_len++) name[name_len] = font.name[name_len];
+    while (name_len && name[name_len - 1] == ' ') name_len--;
+    name[name_len] = 0;
+    keyboard_open();
 }
 
 static void key_page(int8_t dir, uint8_t k) {
@@ -148,15 +177,41 @@ uint8_t keyboard_update(void) BANKED {
     if ((moves & J_RIGHT) && key + 1 < cells) key++;
     if (moves & J_UP) {
         if (key >= 16) key -= 16;
-        else key_page(-1, ((page_cells[kpage ? kpage - 1 : PAGE_COUNT - 1] - 1) / 16) * 16 + key);
+        else if (!naming) key_page(-1, ((page_cells[kpage ? kpage - 1 : PAGE_COUNT - 1] - 1) / 16) * 16 + key);
     }
     if (moves & J_DOWN) {
         if (key / 16 < (cells - 1) / 16) key = key + 16 < cells ? key + 16 : cells - 1;
-        else key_page(1, key % 16);
+        else if (!naming) key_page(1, key % 16);
     }
     if (key != was || kpage != page_was) {
         bars_place(KEY_X, KEY_Y, key);
         sfx(SFX_MOVE);
+    }
+    if (naming) {
+        if ((pressed & (J_A | J_SELECT)) && name_len < NAME_MAX) {
+            name[name_len++] = (pressed & J_SELECT) ? ' ' : (char)(FIRST_CODE + key);
+            name[name_len] = 0;
+            draw_typed();
+            sfx(SFX_INK);
+        }
+        if ((pressed & J_B) && name_len) {
+            name[--name_len] = 0;
+            draw_typed();
+            sfx(SFX_ERASE);
+        }
+        if (pressed & J_START) {
+            uint8_t i;
+            while (name_len && name[name_len - 1] == ' ') name_len--;
+            if (!name_len) {   // a font needs a name
+                sfx(SFX_ERROR);
+                return SCR_STAY;
+            }
+            for (i = 0; i < NAME_MAX; i++) font.name[i] = i < name_len ? name[i] : ' ';
+            save_write();
+            sfx(SFX_OK);
+            return SCR_MAP;
+        }
+        return SCR_STAY;
     }
     if ((pressed & (J_A | J_SELECT)) && custom_len < CUSTOM_MAX) {
         custom[custom_len++] = (pressed & J_SELECT) ? ' ' : (char)(FIRST_CODE + page_first[kpage] + key);

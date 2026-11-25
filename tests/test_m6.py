@@ -214,7 +214,7 @@ class M6(unittest.TestCase):
         game.wait_fonts()
 
         game.open_slot(1)                                        # also from the map, and back to it
-        game.map_menu(4)
+        game.map_menu(5)
         game.wait_for(lambda: game.text(17) == "<>:PAGE  B:BACK", "LEARN from the map")
         game.press("b")
         game.wait_map()

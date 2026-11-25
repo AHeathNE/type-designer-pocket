@@ -157,7 +157,8 @@ class Game:
         self.wait_map()
 
     def map_menu(self, item):
-        """From the character map, START's menu: 0 TYPE TEST, 1 CHALLENGE, 2 FONTS."""
+        """From the character map, START's menu: 0 TYPE TEST, 1 CHALLENGE, 2 NEXT GLYPH, 3 ORDER, 4 RENAME,
+        5 LEARN, 6 FONTS."""
         self.press("start")
         for _ in range(item):
             self.press("down")

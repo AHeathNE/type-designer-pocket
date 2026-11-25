@@ -25,6 +25,7 @@ static void enter(uint8_t screen) {
     case SCR_RESULTS: results_enter(); break;
     case SCR_LEARN: learn_enter(); break;
     case SCR_TITLE: title_enter(); break;
+    case SCR_RENAME: rename_enter(); break;
     }
 }
 
@@ -42,6 +43,7 @@ static uint8_t update(uint8_t screen) {
     case SCR_RESULTS: return results_update();
     case SCR_LEARN: return learn_update();
     case SCR_TITLE: return title_update();
+    case SCR_RENAME: return keyboard_update();
     }
     return SCR_STAY;
 }

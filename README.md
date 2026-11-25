@@ -73,6 +73,7 @@ Row 2 shows **NEXT:**, the next character you haven't drawn in the design order.
 | CHALLENGE | Draw against the clock (below) |
 | NEXT GLYPH | Jump to the next undrawn character in the design order |
 | ORDER | A cycles the design order. It's kept in the save and used by NEXT, the editor's SELECT + ←/→ and the challenge |
+| RENAME | Name the font (up to 12 characters) on the keyboard: A adds, B deletes, SELECT adds a space, START saves. The name shows on the fonts screen and is the default name when you export |
 | LEARN | The LEARN pages, coming back here |
 | FONTS | Back to the fonts screen |
 
@@ -258,6 +259,19 @@ The save holds a 16-byte header (which also keeps the design order, sound and co
 
 [`tools/tdpsave.py`](tools/tdpsave.py) documents every byte. [`src/save.h`](src/save.h) must stay in step with it.
 
+## Playing on a handheld (Miyoo Mini with Onion OS)
+
+Handhelds that run Game Boy games through an emulator are the easiest way to play away from the computer. This is the setup for a Miyoo Mini with [Onion OS](https://onionui.github.io/); other handhelds running RetroArch work the same way, with different folder names.
+
+1. **Copy the game** to `Roms/GBC/type-designer-pocket.gb` on the SD card ([Onion's folders](https://onionui.github.io/docs/emulators/folders)). Folder names are case-sensitive.
+2. **Core.** Onion offers Gambatte, Gearboy and TGB Dual for Game Boy ([GBC page](https://onionui.github.io/docs/emulators/gbc)); Gambatte is a good choice. Press Y on the game in the list to choose. Gambatte sees the game's Color flag and runs it as a Game Boy Color, so the COLORS setting works.
+3. **Saves** are `.srm` files in `Saves/CurrentProfile/saves/<core name>/` ([Onion FAQ](https://onionui.github.io/docs/4.0/faq)), named like the ROM: `type-designer-pocket.srm`. It's the same 8 KB as a `.sav`.
+4. **Quit through the menu** (the Menu button's in-game menu, then exit) before switching off. RetroArch usually writes the `.srm` when the game closes.
+
+**Fonts from the handheld to the computer:** put the SD card in the computer and open the `.srm` on the website (**From a .sav file**, or **Open save file…** on the Play page) or with `sav2font.py`.
+
+**Fonts from the computer to the handheld:** on the website, **Download .sav** (or use the file the Play page saves to), rename it to `type-designer-pocket.srm`, and copy it into the saves folder above.
+
 ## Real hardware
 
 Not yet tried on a real Game Boy. The code was reviewed for the things emulators forgive:
@@ -315,7 +329,7 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | **M5** ✓ | Challenge mode, characters 128–255 (symbols and Latin-1) in the game, templates and exports |
 | **M6** ✓ | Design orders, START FROM, LEARN pages |
 | **M7** ✓ | Real ROM bank switching, sound, title screen, Game Boy Color themes, sound on the website |
-| **Next** | Trying it on real hardware; sending the save over the link cable; title art and a design pass |
+| **Next** | NES version (working title *Super Type Designer*); title art and a design pass; later, cartridges and boxes |
 
 ## Licences
 

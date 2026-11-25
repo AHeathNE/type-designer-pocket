@@ -17,6 +17,7 @@
 #define SCR_RESULTS 9
 #define SCR_LEARN 10
 #define SCR_TITLE 11
+#define SCR_RENAME 12     // the keyboard, naming the font
 #define SCR_STAY 0xFF
 
 extern uint8_t current;       // glyph index being viewed or edited (code - 32)
@@ -53,5 +54,6 @@ void countdown_enter(void) BANKED; uint8_t countdown_update(void) BANKED;
 void results_enter(void) BANKED; uint8_t results_update(void) BANKED;
 void learn_enter(void) BANKED; uint8_t learn_update(void) BANKED;
 void title_enter(void) BANKED; uint8_t title_update(void) BANKED;
+void rename_enter(void) BANKED;   // updated by keyboard_update
 
 #endif

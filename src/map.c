@@ -7,8 +7,8 @@
 //  rows 3-13 (odd)  glyph rows, columns 2-17
 //  row 15  selected: reference char, your glyph, code, width
 //  row 16  DRAWN n/95 on this page, SEL hint
-//  row 17  hints; START opens a menu in the window over rows 10-17: type test, challenge, next glyph,
-//          design order, learn, fonts
+//  row 17  hints; START opens a menu in the window over rows 9-17: type test, challenge, next glyph,
+//          design order, rename, learn, fonts
 #include <gb/gb.h>
 #include "app.h"
 #include "gfx.h"
@@ -21,13 +21,13 @@
 #define REF_TILE 100
 #define NEXT_TILE 101
 #define MENU_X 4
-#define MENU_Y 10
+#define MENU_Y 9
 #define MENU_W 16
-enum { MI_TEST, MI_CHALLENGE, MI_NEXT, MI_ORDER, MI_LEARN, MI_FONTS, MAP_MENU_COUNT };
+enum { MI_TEST, MI_CHALLENGE, MI_NEXT, MI_ORDER, MI_RENAME, MI_LEARN, MI_FONTS, MAP_MENU_COUNT };
 static const char *const menu_labels[MAP_MENU_COUNT] = {"TYPE TEST", "CHALLENGE", "NEXT GLYPH", "ORDER",
-                                                        "LEARN", "FONTS"};
+                                                        "RENAME", "LEARN", "FONTS"};
 static const uint8_t menu_targets[MAP_MENU_COUNT] = {SCR_TYPETEST, SCR_CHALLENGE, SCR_STAY, SCR_STAY,
-                                                     SCR_LEARN, SCR_SLOTS};
+                                                     SCR_RENAME, SCR_LEARN, SCR_SLOTS};
 
 static uint8_t page, menu_open, menu_sel;
 
