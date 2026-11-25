@@ -22,6 +22,7 @@ function audio() {
 export function resumeAudio() {
   if (audioCtx && audioCtx.state !== "running") audioCtx.resume();
 }
+export const audioRunning = () => !!audioCtx && audioCtx.state === "running";
 const BUTTONS = ["up", "down", "left", "right", "a", "b", "start", "select"];
 const SETTERS = {
   up: "_set_joyp_up", down: "_set_joyp_down", left: "_set_joyp_left", right: "_set_joyp_right",
@@ -55,6 +56,7 @@ export class Pocket {
     this.audioBuf = this.heap(module._get_audio_buffer_ptr(this.e), module._get_audio_buffer_capacity(this.e));
     this.audioStart = 0;
     this.onSramChange = null;
+    this.onFrame = null;   // called before each step, e.g. to read game controllers
     this.lastSec = 0;
     this.raf = requestAnimationFrame((t) => this.step(t));
   }
@@ -83,6 +85,7 @@ export class Pocket {
 
   step(ms) {
     this.raf = requestAnimationFrame((t) => this.step(t));
+    if (this.onFrame) this.onFrame();
     const sec = ms / 1000;
     const delta = Math.min(Math.max(sec - (this.lastSec || sec), 0), MAX_STEP_SEC);
     this.lastSec = sec;

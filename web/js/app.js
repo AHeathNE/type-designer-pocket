@@ -1,11 +1,12 @@
 import { Pocket, resumeAudio } from "./emulator.js";
+import { storedSram, storeSram } from "./store.js";
+import { Gamepads } from "./gamepad.js";
 import { parseSave, NotASave, drawnCount, drawnExtCount, glyphFor, layout, TEMPLATES, LINE_PX, SAVE_SIZE, GLYPHS, UNUSED, FIRST_CODE } from "./save.js";
 import { gbStudioZip, slug } from "./gbstudio.js";
 import { buildOtf } from "./otf.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const ROM_URL = "type-designer-pocket.gb";
-const STORE_KEY = "tdp.sram";
 const SAMPLE = "The quick brown fox jumps over the lazy dog.";
 const KEYS = {
   ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
@@ -13,32 +14,11 @@ const KEYS = {
 };
 
 let pocket = null;
+const pads = new Gamepads();
 let romBuffer = null;
 let source = "game";          // where the fonts panel reads from: "game" or "file"
 let fileSave = null;          // parsed save from a dropped .sav
 const cardState = [];         // per slot: { name, text } the visitor typed
-
-// ---- saved game in this browser ----
-
-function storedSram() {
-  try {
-    const b64 = localStorage.getItem(STORE_KEY);
-    if (!b64) return null;
-    return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  } catch {
-    return null;
-  }
-}
-
-function storeSram(data) {
-  try {
-    let s = "";
-    for (const b of data) s += String.fromCharCode(b);
-    localStorage.setItem(STORE_KEY, btoa(s));
-  } catch {
-    /* private window or storage blocked: the game still runs, it just won't be remembered */
-  }
-}
 
 // ---- the game ----
 
@@ -48,6 +28,7 @@ async function startGame(sram) {
     if (pocket) pocket.stop();
     romBuffer ||= await (await fetch(ROM_URL)).arrayBuffer();
     pocket = await Pocket.start($("#screen"), romBuffer, sram);
+    pocket.onFrame = () => pads.poll(pocket);
     let timer = 0;
     pocket.onSramChange = (data) => {
       clearTimeout(timer);

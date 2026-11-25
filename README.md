@@ -2,11 +2,13 @@
 
 A Game Boy game for designing pixel fonts, one 8×8 glyph at a time. Your fonts live in the cartridge's battery save. The website plays the game in your browser and turns that save into a GB Studio font or an `.otf`.
 
-**Play it: https://aheathne.github.io/type-designer-pocket/**
+**Play it: https://aheathne.github.io/type-designer-pocket/** · full screen with a controller: **https://aheathne.github.io/type-designer-pocket/play.html**
 
 Working title.
 
 ## Status
+
+**Play page.** `play.html` runs the same `type-designer-pocket.gb` full size in the browser, with game controllers (USB or Bluetooth) and, in Chrome and Edge, the save kept in a real `.sav` file on your computer that the game writes to as you play.
 
 **M7: sound, title screen, Game Boy Color.** Sound effects for drawing, menus and the challenge; a title screen with SOUND and COLORS settings; four colour themes on a Game Boy Color (grey, green, paper, night); a 64 KB ROM with real bank switching. The website plays the sound too.
 
@@ -167,11 +169,16 @@ Each template is a text file in `fonts/` that you can edit. It's converted to C 
 `web/` is a static site with no build step. `make web` copies it into `build/web` together with a freshly built ROM; serve that folder with any static server, for example `python3 -m http.server --directory build/web`.
 
 - **Play.** The ROM runs in [binjgb](https://github.com/binji/binjgb), vendored in `web/vendor/binjgb`, as a Game Boy Color, so the game's COLORS setting picks the colours. You can use the keyboard (arrows, X = A, Z = B, Enter = START, Shift = SELECT) or the on-screen buttons. Sound plays through Web Audio once you press a key or tap the page (browsers don't allow it before). The save is kept in the browser's local storage. **Download .sav** saves a copy, and **Load a .sav** restarts the game with one.
+- **Play page** (`play.html`). The game as big as the window, with a full-screen button (or <kbd>F</kbd>).
+  - **Controllers** through the browser's Gamepad API, once the controller is paired with the computer: press any button on it and the page names it. D-pad or left stick move; the right face button is A and the bottom one B, as on a Game Boy; Start and Select (Back/View) are START and SELECT. **Swap A and B** is there for controllers labelled the other way, and is remembered.
+  - **Save file.** **Open save file…** links an existing `.sav` (or a handheld's `.srm`) and restarts the game with it; **New save file…** creates one holding the game in progress. From then on every in-game save is written to that file, and to the browser too. The page remembers the file; after a reload the browser asks for one click to reconnect it. This uses the File System Access API, so it needs Chrome, Edge or another Chromium browser; elsewhere the save stays in the browser and **Download .sav** keeps a copy.
+  - **Download .gb** gives you the exact file the page runs, the same one that goes on a handheld or a flash cart.
+  - Sound needs one click or key press first (browsers don't count a controller).
 - **Your fonts.** Each slot shows its glyphs, a type-test box and a font name. The fonts come from the running game, refreshed whenever it saves, or from a `.sav` you drop in. Each slot exports as:
   - **GB Studio (.zip)**: the same PNG, JSON and how-to as `tools/sav2font.py`.
   - **.otf**: one pixel is 125 units on a 1000-unit em, with the baseline under row 6. Each character sits at its real Unicode code point, so the symbols at 128–159 come out as ← ♥ ★ and so on. Glyph placement and widths match the GB Studio export. Pixels are traced into merged outlines, and undrawn characters are left out so apps fall back to another font.
 - **Checks.**
-  - `tests/test_web.py` runs `web/js/save.js` and `otf.js` under Node and compares every glyph, width, outline area and line break with the Python tools.
+  - `tests/test_web.py` runs `web/js/save.js` and `otf.js` under Node and compares every glyph, width, outline area and line break with the Python tools. It also checks the controller mapping (`web/js/gamepad.js`) with a fake controller.
   - In a browser, I checked that:
     - the zip's PNG matches `sav2font.py` byte for byte
     - the `.otf` passes the browser's font sanitizer
@@ -291,6 +298,8 @@ The project is pinned to **GBDK-2020 4.5.0**. 4.6.0 (SDCC 4.6.2) miscompiled cod
 | `tools/get-gbdk.sh` | Downloads the pinned GBDK-2020 toolchain |
 | `tests/` | Headless PyBoy tests, plus a Node check of the website's JavaScript |
 | `web/` | The website: player, font previews, GB Studio and `.otf` export |
+| `web/play.html`, `web/js/play.js` | The Play page: full size, controllers, a save file on the computer |
+| `web/js/store.js`, `web/js/gamepad.js` | The save in the browser and in a file; game controllers |
 | `web/vendor/` | binjgb (emulator, MIT) and opentype.js (MIT), with their licences |
 | `.github/workflows/website.yml` | Test, build and publish the website to GitHub Pages |
 

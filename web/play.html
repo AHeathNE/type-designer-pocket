@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play Type Designer Pocket</title>
+  <meta name="description" content="Play Type Designer Pocket full screen in your browser, with a game controller and the save kept in a file on your computer.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="play">
+  <header class="playbar">
+    <a class="brand" href="./">Type Designer Pocket</a>
+    <nav class="row">
+      <a class="btn" href="./#fonts">Your fonts and export</a>
+      <button id="btn-full" class="btn">Full screen</button>
+    </nav>
+  </header>
+
+  <main class="stage-wrap">
+    <div id="stage" class="stage">
+      <canvas id="screen" width="160" height="144" aria-label="Game screen"></canvas>
+      <p id="screen-msg">Loading the game…</p>
+      <p id="sound-hint" class="sound-hint" hidden>Click or press a key once to turn the sound on.</p>
+    </div>
+  </main>
+
+  <section class="panel" aria-label="Save, controller and keyboard">
+    <div class="box" id="save-box">
+      <h2>Save file</h2>
+      <p id="save-status" class="status">Saving in this browser.</p>
+      <div class="row">
+        <button id="btn-reconnect" class="btn primary" hidden>Reconnect</button>
+        <button id="btn-open-save" class="btn">Open save file…</button>
+        <button id="btn-new-save" class="btn">New save file…</button>
+        <button id="btn-unlink" class="btn" hidden>Stop using the file</button>
+        <button id="btn-download-sav" class="btn">Download .sav</button>
+      </div>
+      <p id="save-note" class="note">Link a <code>.sav</code> (or a <code>.srm</code> from a handheld) and the game writes to it every time it saves. The file works in other emulators and on flash carts too.</p>
+    </div>
+
+    <div class="box">
+      <h2>Controller</h2>
+      <p id="pad-status" class="status">No controller yet. Pair it with your computer, then press any button on it.</p>
+      <label class="check"><input type="checkbox" id="swap-ab"> Swap A and B</label>
+      <p class="note">D-pad or left stick to move. The right face button is A and the bottom one is B, as on a Game Boy. Start and Select (or Back/View) are START and SELECT.</p>
+    </div>
+
+    <div class="box">
+      <h2>Keyboard</h2>
+      <p class="note"><kbd>←↑→↓</kbd> move · <kbd>X</kbd> A · <kbd>Z</kbd> B · <kbd>Enter</kbd> START · <kbd>Shift</kbd> SELECT · <kbd>F</kbd> full screen</p>
+    </div>
+
+    <div class="box">
+      <h2>The game file</h2>
+      <p class="note">This page runs <code>type-designer-pocket.gb</code>, the same file you put on a handheld or a flash cart.</p>
+      <a class="btn" href="type-designer-pocket.gb" download>Download .gb</a>
+    </div>
+  </section>
+
+  <script src="vendor/binjgb/binjgb.js"></script>
+  <script type="module" src="js/play.js"></script>
+</body>
+</html>

@@ -77,5 +77,17 @@ class Web(unittest.TestCase):
         self.assertFalse(js["slots"][2]["crcOk"])
 
 
+    def test_controller_mapping(self):
+        out = json.loads(subprocess.run([NODE, str(ROOT / "tests" / "gamepad_check.mjs")], capture_output=True,
+                                        text=True, check=True, cwd=ROOT).stdout)
+        # by position, as on a Game Boy: right face button A, bottom B; Start, Select, d-pad
+        self.assertEqual(out["standard"], ["a+", "a-", "b+", "b-", "start+", "start-", "select+", "select-",
+                                           "up+", "up-", "right+", "right-"])
+        self.assertEqual(out["stick"], ["left+", "left-"])          # a small tilt doesn't count
+        self.assertEqual(out["swapped"], ["b+", "b-", "a+", "a-"])
+        self.assertTrue(out["remembered"])
+        self.assertEqual(out["name"], "Fake")
+
+
 if __name__ == "__main__":
     unittest.main()
